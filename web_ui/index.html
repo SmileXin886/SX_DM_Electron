@@ -10,13 +10,10 @@
     <script src="tailwindcss.js"></script>
     <script src="js/store.js"></script>
     <script src="js/api.js"></script>
-    <!-- 模块脚本（defer，DOM 解析完执行；注意 editor_tag_sync.js 是普通脚本，移到最后） -->
-    <script type="module" src="js/tabs/tab_service.js"></script>
-    <script type="module" src="js/tabs/tab_presets.js"></script>
-    <script type="module" src="js/tabs/tab_tasks.js"></script>
-    <script type="module" src="js/app.js"></script>
-    <!-- 编辑器标签同步（普通脚本，必须在 EventBus 就绪后才能初始化，放最后） -->
     <script src="js/editor_tag_sync.js"></script>
+
+    <!-- 唯一的模块入口 -->
+    <script type="module" src="js/app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { height: 100%; overflow: hidden; }

@@ -255,6 +255,24 @@ ipcMain.handle('app:previewMedia', async (event, filePath) => {
     return true;
 });
 
+/**
+ * 【系统级】启动 Python 服务
+ * 前端调用：window.electronAPI.startServer(host, port)
+ */
+ipcMain.handle('server:start', async (event, host, port) => {
+    startPythonServer();
+    return true;
+});
+
+/**
+ * 【系统级】停止 Python 服务
+ * 前端调用：window.electronAPI.stopServer()
+ */
+ipcMain.handle('server:stop', async (event) => {
+    stopPythonServer();
+    return true;
+});
+
 // ==================== 应用生命周期 ====================
 
 app.whenReady().then(() => {
@@ -271,7 +289,7 @@ app.whenReady().then(() => {
 
     createMenu();
     createWindow();
-    startPythonServer();
+    // Python 服务改为由前端按钮控制，不再开机自启
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {

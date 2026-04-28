@@ -46,6 +46,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {string} filePath - 文件绝对路径
      */
     previewMedia: (filePath) => ipcRenderer.invoke('app:previewMedia', filePath),
+
+    // ==================== 服务控制 API ====================
+
+    /**
+     * 启动 Python 服务
+     */
+    startServer: (host, port) => ipcRenderer.invoke('server:start', host, port),
+
+    /**
+     * 停止 Python 服务
+     */
+    stopServer: () => ipcRenderer.invoke('server:stop'),
 });
 
 /**

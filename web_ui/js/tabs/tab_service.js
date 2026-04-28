@@ -33,6 +33,28 @@ const TabService = {
         if (clearBtn) {
             clearBtn.addEventListener('click', () => this.clearLogs());
         }
+
+        // 还原启动按钮的控制逻辑
+        const startBtn = document.getElementById('startBtn');
+        if (startBtn) {
+            startBtn.addEventListener('click', async () => {
+                const host = document.getElementById('hostInput').value || '127.0.0.1';
+                const port = document.getElementById('portInput').value || '8765';
+
+                // 禁用按钮防抖
+                startBtn.disabled = true;
+
+                if (AppState.serverRunning) {
+                    this.addLog('正在发送停止指令...', 'info');
+                    await window.electronAPI.stopServer();
+                } else {
+                    this.addLog('正在启动服务...', 'info');
+                    await window.electronAPI.startServer(host, port);
+                }
+
+                // 按钮状态会通过 _checkServer 轮询检测到状态变化后自动恢复
+            });
+        }
     },
 
     _subscribeEvents: function() {
@@ -103,15 +125,36 @@ const TabService = {
     updateServerUI: function(running) {
         const dot = document.getElementById('statusDot');
         const text = document.getElementById('statusText');
+        const btn = document.getElementById('startBtn');
 
         if (running) {
             dot.classList.add('online');
             text.textContent = '在线';
             text.style.color = '#3fb950';
+            if (btn) {
+                btn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    </svg>
+                    停止服务
+                `;
+                btn.classList.add('running');
+                btn.disabled = false;
+            }
         } else {
             dot.classList.remove('online');
             text.textContent = '离线';
             text.style.color = '#8b949e';
+            if (btn) {
+                btn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    启动服务
+                `;
+                btn.classList.remove('running');
+                btn.disabled = false;
+            }
         }
     },
 
