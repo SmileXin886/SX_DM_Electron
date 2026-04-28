@@ -21,14 +21,10 @@ function init() {
     window.EventBus.on('server:online', onServerOnline);
     window.EventBus.on('server:offline', onServerOffline);
 
-    // 绑定完监听后，再去初始化 API 层
+    // EditorTagSync 已在 script 末尾自初始化（editor_tag_sync.js 底部），无需手动调用
     window.API.init();
 
     initNavigation();
-
-    if (window.EditorTagSync) {
-        window.EditorTagSync.init && window.EditorTagSync.init();
-    }
 
     console.log('[app.js] 初始化完成，等待 Electron 连接...');
 }

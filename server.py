@@ -121,7 +121,7 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
     2. 总数上限（MAX_TOTAL = 12）
     3. 类型数量限制（MAX_VIDEOS = 3 / MAX_AUDIOS = 3）
     4. 时长限制（视频/音频总时长各 <= 15s），超时从头部移除
-    5. for_editor=True 时，给新文件附加 insert_index 供编辑区标签同步
+    5. for_editor=True 时，给新文件附加 insert_index 供编辑区标签同步（trim 后计算）
     """
     existing_paths = {f['path'] for f in fm.get_all()}
     new_files: List[Dict[str, Any]] = []
@@ -173,10 +173,6 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
             'duration_seconds': float(f.get('duration_seconds', 0)),
         }
 
-        # 编辑区拖拽时，附加 insert_index 供前端精准定位标签
-        if for_editor:
-            file_entry['insert_index'] = base_index + len(new_files)
-
         new_files.append(file_entry)
 
     # 追加到内存列表
@@ -199,6 +195,13 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
     video_msg = trim_by_duration('video', MAX_VIDEO_DURATION)
     audio_msg = trim_by_duration('audio', MAX_AUDIO_DURATION)
     limit_msg = video_msg or audio_msg or limit_msg
+
+    # 【关键修复】for_editor 模式下，insert_index 在 trim 之后计算
+    # 只为仍然存在于 _all_files 的新文件分配 index
+    if for_editor and new_files:
+        for f in new_files:
+            if f in fm.get_all():
+                f['insert_index'] = fm.get_all().index(f)
 
     return {
         "success": True,

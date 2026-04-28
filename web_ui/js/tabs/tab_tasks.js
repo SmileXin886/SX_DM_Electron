@@ -85,6 +85,9 @@ const TabTasks = {
             promptEl.addEventListener('input', (e) => this._onPromptInput(e));
             promptEl.addEventListener('keydown', (e) => this._onPromptKeydown(e));
             promptEl.addEventListener('focus', () => this._onPromptFocus());
+            // 编辑区拖拽事件
+            promptEl.addEventListener('dragenter', (e) => this._onPromptDragEnter(e));
+            promptEl.addEventListener('dragleave', (e) => this._onPromptDragLeave(e));
             promptEl.addEventListener('dragover', (e) => this._onPromptDragover(e));
             promptEl.addEventListener('drop', (e) => this._onPromptDrop(e));
         }
@@ -120,6 +123,18 @@ const TabTasks = {
         // ============ Reference 上传区拖拽 ============
         const refContainer = document.getElementById('reference-dropzone');
         if (refContainer) {
+            // 点击打开文件选择
+            refContainer.addEventListener('click', (e) => {
+                if (e.target.closest('.preview-card')) return;
+                window.API.openAndProcessFiles();
+            });
+            // 拖拽进入
+            refContainer.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.__isDragging = true;
+                refContainer.classList.add('drag-active');
+            });
             refContainer.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -130,11 +145,17 @@ const TabTasks = {
                 e.preventDefault();
                 e.stopPropagation();
                 refContainer.classList.remove('drag-over');
+                refContainer.classList.remove('drag-active');
+                if (!refContainer.contains(e.relatedTarget)) {
+                    window.__isDragging = false;
+                }
             });
             refContainer.addEventListener('drop', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 refContainer.classList.remove('drag-over');
+                refContainer.classList.remove('drag-active');
+                window.__isDragging = false;
 
                 const files = e.dataTransfer?.files;
                 if (files && files.length > 0) {
@@ -142,7 +163,7 @@ const TabTasks = {
                     for (let i = 0; i < files.length; i++) {
                         if (files[i].path) paths.push(files[i].path);
                     }
-                    if (paths.length > 0 && window.API && window.API.processFiles) {
+                    if (paths.length > 0 && window.API) {
                         window.API.processFiles(paths);
                     }
                 }
@@ -169,9 +190,9 @@ const TabTasks = {
             }
         });
 
-        // 编辑区拖拽完成
-        EventBus.on('files:dropped', (data) => {
-            console.log('[TabTasks] 收到 files:dropped', data);
+        // 编辑区拖拽完成（精准光标定位插入标签）
+        EventBus.on('editor:dropped', (data) => {
+            console.log('[TabTasks] 收到 editor:dropped', data);
             if (data.files && data.files.length > 0) {
                 this._insertRefTagsAtCursor(data.files, data.drop_pos);
             }
@@ -420,21 +441,117 @@ const TabTasks = {
         } else {
             e.dataTransfer.dropEffect = 'copy';
         }
+        this._updateDragCursor(e.clientX, e.clientY);
+    },
+
+    _updateDragCursor: function(clientX, clientY) {
+        const editor = document.getElementById('dreaminaPrompt');
+        const cursor = document.getElementById('drag-cursor');
+        if (!editor || !cursor) return;
+
+        const editorRect = editor.getBoundingClientRect();
+        const isOverEditor = clientX >= editorRect.left && clientX <= editorRect.right &&
+                             clientY >= editorRect.top && clientY <= editorRect.bottom;
+
+        if (!isOverEditor) {
+            cursor.style.display = 'none';
+            return;
+        }
+
+        // 尝试用 caretRangeFromPoint 精准定位光标
+        let range = null;
+        if (document.caretRangeFromPoint) {
+            range = document.caretRangeFromPoint(clientX, clientY);
+        } else if (document.caretPositionFromPoint) {
+            const cp = document.caretPositionFromPoint(clientX, clientY);
+            if (cp) {
+                range = document.createRange();
+                range.setStart(cp.offsetNode, cp.offset);
+                range.collapse(true);
+            }
+        }
+
+        if (range) {
+            const inEditor = editor.contains(range.startContainer) || editor === range.startContainer;
+            if (inEditor) {
+                try {
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+
+                    const cursorRect = range.getBoundingClientRect();
+                    const isInvalidRect = cursorRect.left === 0 && cursorRect.top === 0 && cursorRect.height === 0;
+                    if (cursorRect && cursorRect.width !== undefined && !isInvalidRect) {
+                        cursor.style.left = cursorRect.left + 'px';
+                        cursor.style.top = cursorRect.top + 'px';
+                        cursor.style.height = (cursorRect.height > 0 ? cursorRect.height : 18) + 'px';
+                        cursor.style.display = 'block';
+                    } else {
+                        cursor.style.display = 'none';
+                    }
+                } catch (e) {
+                    cursor.style.display = 'none';
+                }
+                return;
+            }
+        }
+        cursor.style.display = 'none';
+    },
+
+    _onPromptDragEnter: function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const elementUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
+        if (elementUnderMouse && elementUnderMouse.closest('.ref-tag')) {
+            return;
+        }
+        const editor = document.getElementById('dreaminaPrompt');
+        if (editor) editor.classList.add('drag-over');
+        window.__isDragging = true;
+    },
+
+    _onPromptDragLeave: function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const editor = document.getElementById('dreaminaPrompt');
+        if (!editor) return;
+        // 只有真正离开编辑区才移除样式（检查 relatedTarget）
+        if (!e.relatedTarget || !editor.contains(e.relatedTarget)) {
+            editor.classList.remove('drag-over');
+        }
     },
 
     _onPromptDrop: function(e) {
         e.preventDefault();
         e.stopPropagation();
+        const editor = document.getElementById('dreaminaPrompt');
+        if (editor) editor.classList.remove('drag-over');
+        window.__isDragging = false;
+
+        // 清除 drag-cursor
+        const cursor = document.getElementById('drag-cursor');
+        if (cursor) cursor.remove();
+
         const files = e.dataTransfer?.files;
-        if (files && files.length > 0) {
-            const paths = [];
-            for (let i = 0; i < files.length; i++) {
-                paths.push(files[i].path || files[i].name);
-            }
-            const dropPos = { x: e.clientX, y: e.clientY };
-            // 发送到后端处理，然后通过 files:dropped 事件插入标签
-            window.API.processEditorDropFiles(paths, dropPos);
+        if (!files || files.length === 0) return;
+
+        const dropZone = document.getElementById('reference-dropzone');
+        const elemUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
+
+        // 判断是否落在 reference-dropzone 内（应该阻止默认行为，让 dropzone 处理）
+        if (dropZone && (dropZone.contains(elemUnderMouse) || elemUnderMouse === dropZone)) {
+            // 交给 reference-dropzone 的 drop 处理器（会阻止事件冒泡）
+            return;
         }
+
+        // 落在编辑区或其他区域：提取路径并处理
+        const paths = [];
+        for (let i = 0; i < files.length; i++) {
+            paths.push(files[i].path || files[i].name);
+        }
+
+        const dropPos = { x: e.clientX, y: e.clientY };
+        window.API.processEditorDropFiles(paths, dropPos);
     },
 
     // ============================================================

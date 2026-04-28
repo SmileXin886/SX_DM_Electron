@@ -71,7 +71,7 @@ const TabService = {
 
         EventBus.on('error:start_server', (data) => {
             this.addLog('启动失败: ' + data.error, 'error');
-            this.updateServerUI(false);
+            this._resetStartButton();
         });
 
         EventBus.on('log', (data) => {
@@ -124,6 +124,11 @@ const TabService = {
                 btn.disabled = false;
             }
         }
+    },
+
+    _resetStartButton: function() {
+        const btn = document.getElementById('startBtn');
+        if (btn) btn.disabled = false;
     },
 
     /**

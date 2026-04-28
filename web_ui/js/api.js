@@ -388,6 +388,12 @@
                 case 'open_file_dialog':
                     return this.openAndProcessFiles();
 
+                case 'process_files':
+                    return this.processFiles(params.paths || []);
+
+                case 'process_dropped_files':
+                    return this.processEditorDropFiles(params.paths || [], params.dropPos);
+
                 default:
                     console.warn(`[API.call] 未知操作: ${action}`);
                     return { success: false, error: `unknown action: ${action}` };
@@ -445,22 +451,6 @@
             check();
         },
 
-        _checkServerStatus: async function() {
-            try {
-                const health = await httpGet('/health');
-                console.log('[API] 服务状态:', health);
-                if (health.status === 'ok') {
-                    EventBus.emit('server:online', health);
-                } else {
-                    EventBus.emit('server:offline');
-                }
-            } catch (e) {
-                console.warn('[API] 服务离线:', e.message);
-                EventBus.emit('server:offline');
-            }
-        },
-
-
         // ============ 文件管理 ============
 
         /**
@@ -507,6 +497,9 @@
                 EventBus.emit('progress:files', { percent: 100, message: '完成' });
                 EventBus.emit('files:processed', result);
                 EventBus.emit('files:listUpdated', result.files || []);
+                if (result.message) {
+                    EventBus.emit('toast', { message: result.message });
+                }
             } catch (e) {
                 console.error('[API] 文件处理失败:', e);
                 EventBus.emit('error:files', { error: e.message });
@@ -533,7 +526,8 @@
             try {
                 const result = await httpDelete('/api/files/' + index);
                 console.log('[API] 删除文件结果:', result);
-                EventBus.emit('file:removed', { index });
+                const removed = result.removed;
+                EventBus.emit('file:removed', removed || { index });
                 EventBus.emit('files:listUpdated', result.files || []);
                 return result;
             } catch (e) {
@@ -547,19 +541,24 @@
          */
         async processEditorDropFiles(paths, dropPos) {
             try {
+                EventBus.emit('progress:editor_drop', { percent: 10, message: '正在解析媒体...' });
                 const enrichedFiles = await extractAllMediaInfo(paths);
+                EventBus.emit('progress:editor_drop', { percent: 60, message: '正在发送到后端...' });
                 const result = await httpPost('/api/files/process', { files: enrichedFiles, for_editor: true });
                 console.log('[API] 编辑区拖拽处理结果:', result);
+
+                // 发送 editor:dropped 信号，携带完整文件数据和 drop 坐标
                 if (result.files && result.files.length > 0) {
-                    // 在 drop 位置插入标签
-                    EventBus.emit('files:dropped', {
+                    EventBus.emit('editor:dropped', {
                         files: result.files,
                         drop_pos: dropPos
                     });
-                    EventBus.emit('files:listUpdated', result.files || []);
                 }
+                EventBus.emit('files:listUpdated', result.files || []);
+                EventBus.emit('progress:editor_drop', { percent: 100, message: '完成' });
             } catch (e) {
                 console.error('[API] 编辑区拖拽处理失败:', e);
+                EventBus.emit('error:editor_drop', { error: e.message });
             }
         },
 
