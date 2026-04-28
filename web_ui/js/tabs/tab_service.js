@@ -8,7 +8,6 @@
 
 const TabService = {
     _initialized: false,
-    _statusCheckTimer: null,
 
     init: function() {
         if (this._initialized) return;
@@ -16,14 +15,6 @@ const TabService = {
 
         this._bindEvents();
         this._subscribeEvents();
-
-        // 立即检查一次服务状态
-        this._checkServer();
-
-        // 每 5 秒轮询一次服务状态
-        this._statusCheckTimer = setInterval(() => {
-            this._checkServer();
-        }, 5000);
 
         console.log('[tab_service.js] 模块初始化完成');
     },
@@ -34,88 +25,65 @@ const TabService = {
             clearBtn.addEventListener('click', () => this.clearLogs());
         }
 
-        // 还原启动按钮的控制逻辑
         const startBtn = document.getElementById('startBtn');
         if (startBtn) {
-            startBtn.addEventListener('click', async () => {
+            startBtn.addEventListener('click', () => {
                 const host = document.getElementById('hostInput').value || '127.0.0.1';
-                const port = document.getElementById('portInput').value || '8765';
+                const port = parseInt(document.getElementById('portInput').value) || 8765;
 
-                // 禁用按钮防抖
                 startBtn.disabled = true;
-
-                if (AppState.serverRunning) {
-                    this.addLog('正在发送停止指令...', 'info');
-                    await window.electronAPI.stopServer();
-                } else {
-                    this.addLog('正在启动服务...', 'info');
-                    await window.electronAPI.startServer(host, port);
-                }
-
-                // 按钮状态会通过 _checkServer 轮询检测到状态变化后自动恢复
+                API.call(AppState.serverRunning ? 'stop_server' : 'start_server', { host, port });
             });
         }
     },
 
     _subscribeEvents: function() {
-        // 服务上线
+        EventBus.on('server:start', (result) => {
+            if (result.success) {
+                AppState.setServerRunning(true);
+                this.updateServerUI(true);
+                this.addLog('连接服务已就绪，网关已开启', 'success');
+                this.addLog('服务地址: ' + result.ws_url, 'info');
+            }
+        });
+
+        EventBus.on('server:stop', () => {
+            AppState.setServerRunning(false);
+            this.updateServerUI(false);
+            this.addLog('连接服务已断开', 'info');
+        });
+
         EventBus.on('server:online', (health) => {
-            console.log('[TabService] 收到 server:online', health);
             AppState.setServerRunning(true);
             if (health.ws_url) AppState.setWsUrl(health.ws_url);
             this.updateServerUI(true);
-            this.addLog('服务已就绪: ' + (health.ws_url || 'ws://127.0.0.1:8765/ws'), 'success');
             document.getElementById('wsUrl').textContent = health.ws_url || 'ws://127.0.0.1:8765/ws';
         });
 
-        // 服务离线
         EventBus.on('server:offline', () => {
-            console.log('[TabService] 收到 server:offline');
             AppState.setServerRunning(false);
             this.updateServerUI(false);
         });
 
-        // WebSocket 连接成功
-        EventBus.on('ws:open', () => {
-            this.addLog('WebSocket 连接已建立', 'success');
+        EventBus.on('progress:start_server', (data) => {
+            this.addLog(data.message, 'info');
         });
 
-        // WebSocket 断开
-        EventBus.on('ws:close', () => {
-            this.addLog('WebSocket 连接已断开，正在重连...', 'warning');
+        EventBus.on('error:start_server', (data) => {
+            this.addLog('启动失败: ' + data.error, 'error');
+            this.updateServerUI(false);
         });
 
-        // 通用日志
         EventBus.on('log', (data) => {
             this.addLog(data.message, data.type || 'info');
         });
 
-        // 文件处理进度
-        EventBus.on('progress:files', (data) => {
-            console.log('[TabService] 文件处理进度:', data);
+        EventBus.on('ws:open', () => {
+            this.addLog('WebSocket 连接已建立', 'success');
         });
 
-        console.log('[tab_service.js] EventBus 事件已订阅');
-    },
-
-    /**
-     * 检查服务状态
-     */
-    _checkServer: async function() {
-        window.httpClient.get('/health').then(health => {
-            if (health.status === 'ok') {
-                if (!AppState.serverRunning) {
-                    EventBus.emit('server:online', health);
-                }
-            } else {
-                if (AppState.serverRunning) {
-                    EventBus.emit('server:offline');
-                }
-            }
-        }).catch(() => {
-            if (AppState.serverRunning) {
-                EventBus.emit('server:offline');
-            }
+        EventBus.on('ws:close', () => {
+            this.addLog('WebSocket 连接已断开，正在重连...', 'warning');
         });
     },
 
@@ -189,8 +157,4 @@ const TabService = {
     }
 };
 
-// 确保 TabService 在 init 前已挂到 window（app.js 导入时会执行这里）
-window.TabService = TabService;
-
-// 命名导出（供 app.js 使用）
 export { TabService };

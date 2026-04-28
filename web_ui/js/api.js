@@ -348,6 +348,76 @@
             this._waitForElectron();
         },
 
+        /**
+         * 【核心修复】PySide6 风格的统一调用入口
+         * 系统级操作（启动/停止服务）→ Electron main.js
+         * 业务指令 → 映射到现有方法
+         */
+        async call(action, params = {}) {
+            console.log(`[API.call] 操作: ${action}`, params);
+
+            switch (action) {
+                case 'start_server': {
+                    try {
+                        EventBus.emit('progress:start_server', { percent: 30, message: '正在尝试建立连接服务...' });
+                        await window.electronAPI.startServer(params.host || '127.0.0.1', params.port || 8765);
+                        setTimeout(() => this._checkServerStatus('start_server'), 1000);
+                        return { success: true };
+                    } catch (e) {
+                        console.error('[API.call] 启动服务失败:', e);
+                        EventBus.emit('error:start_server', { error: '连接服务启动失败' });
+                        return { success: false, error: e.message };
+                    }
+                }
+
+                case 'stop_server': {
+                    try {
+                        EventBus.emit('log', { message: '正在安全断开连接服务...', type: 'info' });
+                        await window.electronAPI.stopServer();
+                        this._onServerOffline();
+                        return { success: true };
+                    } catch (e) {
+                        console.error('[API.call] 停止服务失败:', e);
+                        return { success: false, error: e.message };
+                    }
+                }
+
+                case 'get_presets':
+                    return this.getPresets();
+
+                case 'open_file_dialog':
+                    return this.openAndProcessFiles();
+
+                default:
+                    console.warn(`[API.call] 未知操作: ${action}`);
+                    return { success: false, error: `unknown action: ${action}` };
+            }
+        },
+
+        _checkServerStatus: async function(triggeringAction) {
+            try {
+                const health = await httpGet('/health');
+                if (health.status === 'ok') {
+                    if (triggeringAction === 'start_server') {
+                        EventBus.emit('server:start', {
+                            success: true,
+                            ws_url: health.ws_url || `ws://${health.host || '127.0.0.1'}:8765/ws`
+                        });
+                    }
+                    EventBus.emit('server:online', health);
+                }
+            } catch (e) {
+                if (triggeringAction !== 'stop_server') {
+                    this._onServerOffline();
+                }
+            }
+        },
+
+        _onServerOffline: function() {
+            EventBus.emit('server:offline');
+            EventBus.emit('server:stop', { success: true });
+        },
+
         _waitForElectron: function() {
             let attempts = 0;
             const maxAttempts = 50;

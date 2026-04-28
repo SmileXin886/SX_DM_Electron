@@ -51,13 +51,13 @@ function onServerOnline(health) {
     console.log('[app.js] 服务已上线:', health);
     window.AppState.setServerRunning(true);
     window.AppState.setWsUrl('ws://127.0.0.1:8765/ws');
-    addLog('Python 服务已就绪', 'success');
+    addLog('连接服务已就绪，网关已开启', 'success');
 }
 
 function onServerOffline() {
     console.log('[app.js] 服务已离线');
     window.AppState.setServerRunning(false);
-    addLog('Python 服务不可用', 'warning');
+    addLog('连接服务未启动...', 'warning');
 }
 
 function initNavigation() {
