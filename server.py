@@ -9,9 +9,9 @@ Dreamina Toolkit - FastAPI + WebSocket 服务端
 - 后端：轻量级校验器，只做业务规则检查和内存状态管理
 
 【职责】
-1. HTTP REST API（供 Electron 前端调用）：
+1. HTTP REST API （供 Electron 前端调用）：
    - 文件管理：校验、删除、列表
-   - 预设管理：CRUD
+   - 预设管理： CRUD
 2. WebSocket 长连接（供 Chrome 扩展端调用）：
    - GET_PRESETS / CREATE_PRESET / APPLY_PRESET / DELETE_PRESET
 """
@@ -35,22 +35,18 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from preset_manager import get_preset_manager
 
-logger = logging.getLogger("SX_DM.server")
-
-
 # ============================================================
-# 日志配置
-# ============================================================
-
+# 日志配置（basicConfig 只生效一次，由首次 import 的模块触发）
 def setup_logging():
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
-        datefmt="%H:%M:%S",
-    )
+    root = logging.getLogger()
+    if not root.handlers:
+        root.setLevel(logging.INFO)
+        ch = logging.StreamHandler()
+        ch.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s - %(message)s", datefmt="%H:%M:%S"))
+        root.addHandler(ch)
     return logging.getLogger("SX_DM")
 
-logger = setup_logging()
+log = setup_logging()
 
 
 # ============================================================
@@ -137,7 +133,7 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
         file_type = f.get('type', 'unknown')
 
         if not path or path in existing_paths:
-            logger.info(f"[Server] 跳过（空/重复）: {path}")
+            log.info(f"[Server] 跳过（空/重复）: {path}")
             continue
 
         total = len(fm.get_all()) + len(new_files)
@@ -146,7 +142,7 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
             break
 
         if file_type not in ('image', 'video', 'audio'):
-            logger.warning(f"[Server] 未知类型 '{file_type}'，跳过: {path}")
+            log.warning(f"[Server] 未知类型 '{file_type}'，跳过: {path}")
             continue
 
         # 统计当前类型数量
@@ -193,7 +189,7 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
         total = sum(f.get('duration_seconds', 0) for f in files)
         if total <= limit:
             return None
-        logger.info(f"[Server] {ftype} 总时长超限 ({total}s>{limit}s)，自动裁剪")
+        log.info(f"[Server] {ftype} 总时长超限 ({total}s>{limit}s)，自动裁剪")
         while files and sum(f.get('duration_seconds', 0) for f in files) > limit:
             removed = files.pop(0)
             fm.remove(fm.get_all().index(removed))
@@ -231,13 +227,13 @@ class ConnectionManager:
                 "user_agent": websocket.headers.get("user-agent", "unknown"),
                 **(meta or {}),
             }
-        logger.info(f"[WS] 连接: {client_id} (共 {len(self.active_connections)} 个)")
+        log.info(f"[WS] 连接: {client_id} (共 {len(self.active_connections)} 个)")
 
     async def disconnect(self, client_id: str):
         async with self._lock:
             self.active_connections.pop(client_id, None)
             self.metadata.pop(client_id, None)
-        logger.info(f"[WS] 断开: {client_id} (剩余 {len(self.active_connections)} 个)")
+        log.info(f"[WS] 断开: {client_id} (剩余 {len(self.active_connections)} 个)")
 
     async def send(self, client_id: str, message: dict):
         async with self._lock:
@@ -439,9 +435,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 continue
             await handle_ws_message(client_id, msg)
     except WebSocketDisconnect:
-        logger.info(f"[WS] 客户端断开: {client_id}")
+        log.info(f"[WS] 客户端断开: {client_id}")
     except Exception as e:
-        logger.error(f"[WS] 异常 [{client_id}]: {e}\n{traceback.format_exc()}")
+        log.error(f"[WS] 异常 [{client_id}]: {e}\n{traceback.format_exc()}")
     finally:
         await manager.disconnect(client_id)
 
@@ -478,7 +474,7 @@ async def handle_ws_message(client_id: str, msg: dict):
             "id": request_id,
             "preset": preset,
         })
-        logger.info(f"[WS] 创建预设: {preset['id']}")
+        log.info(f"[WS] 创建预设: {preset['id']}")
         return
 
     if msg_type == "APPLY_PRESET":
@@ -512,7 +508,7 @@ async def handle_ws_message(client_id: str, msg: dict):
             try:
                 await _stream_file(client_id, request_id, file_path)
             except Exception as e:
-                logger.error(f"[WS] 文件发送失败: {e}")
+                log.error(f"[WS] 文件发送失败: {e}")
                 await manager.send(client_id, {
                     "type": "FILE_ERROR",
                     "id": request_id,
@@ -570,7 +566,7 @@ async def _stream_file(client_id: str, request_id: str, file_path: str):
             chunk_index += 1
             if chunk_index % 4 == 0:
                 await asyncio.sleep(0.005)
-    logger.info(f"[WS] 文件发送完成: {os.path.basename(file_path)} ({chunk_index} chunks)")
+    log.info(f"[WS] 文件发送完成: {os.path.basename(file_path)} ({chunk_index} chunks)")
 
 
 # ============================================================
@@ -578,11 +574,11 @@ async def _stream_file(client_id: str, request_id: str, file_path: str):
 # ============================================================
 
 def run_server(host: str = "127.0.0.1", port: int = 8765, reload: bool = False):
-    logger.info(f"{'='*50}")
-    logger.info(f"  Dreamina Toolkit - API 服务 v3.0")
-    logger.info(f"  HTTP: http://{host}:{port}")
-    logger.info(f"  WS:   ws://{host}:{port}/ws")
-    logger.info(f"{'='*50}")
+    log.info(f"{'='*50}")
+    log.info(f"  Dreamina Toolkit - API 服务 v3.0")
+    log.info(f"  HTTP: http://{host}:{port}")
+    log.info(f"  WS:   ws://{host}:{port}/ws")
+    log.info(f"{'='*50}")
     uvicorn.run("server:app", host=host, port=port, reload=reload, log_level="info")
 
 
