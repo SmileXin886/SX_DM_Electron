@@ -388,12 +388,6 @@
                 case 'open_file_dialog':
                     return this.openAndProcessFiles();
 
-                case 'process_files':
-                    return this.processFiles(params.paths || []);
-
-                case 'process_dropped_files':
-                    return this.processEditorDropFiles(params.paths || [], params.dropPos);
-
                 default:
                     console.warn(`[API.call] 未知操作: ${action}`);
                     return { success: false, error: `unknown action: ${action}` };
@@ -403,18 +397,23 @@
         _checkServerStatus: async function(triggeringAction) {
             try {
                 const health = await httpGet('/health');
+                console.log('[API] 服务状态:', health);
                 if (health.status === 'ok') {
                     if (triggeringAction === 'start_server') {
                         EventBus.emit('server:start', {
                             success: true,
-                            ws_url: health.ws_url || `ws://${health.host || '127.0.0.1'}:8765/ws`
+                            ws_url: health.ws_url || `ws://127.0.0.1:8765/ws`
                         });
                     }
-                    EventBus.emit('server:online', health);
+                    // 避免 bridge:ready 时自动触发 server:online（会导致日志重复）
+                    // server:online 仅在 WebSocket 自动重连场景下由 ws:open 事件处理
+                } else {
+                    EventBus.emit('server:offline');
                 }
             } catch (e) {
                 if (triggeringAction !== 'stop_server') {
-                    this._onServerOffline();
+                    EventBus.emit('server:offline');
+                    EventBus.emit('server:stop', { success: true });
                 }
             }
         },
@@ -433,10 +432,8 @@
                 if (window.electronAPI) {
                     console.log('[API] electronAPI 已就绪');
                     this._bridgeReady = true;
-                    // 尝试连接 WebSocket
                     wsConnect();
                     EventBus.emit('bridge:ready');
-                    // 立即检查服务状态
                     this._checkServerStatus();
                     return;
                 }
@@ -450,6 +447,7 @@
 
             check();
         },
+
 
         // ============ 文件管理 ============
 
@@ -497,9 +495,6 @@
                 EventBus.emit('progress:files', { percent: 100, message: '完成' });
                 EventBus.emit('files:processed', result);
                 EventBus.emit('files:listUpdated', result.files || []);
-                if (result.message) {
-                    EventBus.emit('toast', { message: result.message });
-                }
             } catch (e) {
                 console.error('[API] 文件处理失败:', e);
                 EventBus.emit('error:files', { error: e.message });
@@ -526,8 +521,7 @@
             try {
                 const result = await httpDelete('/api/files/' + index);
                 console.log('[API] 删除文件结果:', result);
-                const removed = result.removed;
-                EventBus.emit('file:removed', removed || { index });
+                EventBus.emit('file:removed', { index });
                 EventBus.emit('files:listUpdated', result.files || []);
                 return result;
             } catch (e) {
@@ -541,24 +535,19 @@
          */
         async processEditorDropFiles(paths, dropPos) {
             try {
-                EventBus.emit('progress:editor_drop', { percent: 10, message: '正在解析媒体...' });
                 const enrichedFiles = await extractAllMediaInfo(paths);
-                EventBus.emit('progress:editor_drop', { percent: 60, message: '正在发送到后端...' });
                 const result = await httpPost('/api/files/process', { files: enrichedFiles, for_editor: true });
                 console.log('[API] 编辑区拖拽处理结果:', result);
-
-                // 发送 editor:dropped 信号，携带完整文件数据和 drop 坐标
                 if (result.files && result.files.length > 0) {
-                    EventBus.emit('editor:dropped', {
+                    // 在 drop 位置插入标签
+                    EventBus.emit('files:dropped', {
                         files: result.files,
                         drop_pos: dropPos
                     });
+                    EventBus.emit('files:listUpdated', result.files || []);
                 }
-                EventBus.emit('files:listUpdated', result.files || []);
-                EventBus.emit('progress:editor_drop', { percent: 100, message: '完成' });
             } catch (e) {
                 console.error('[API] 编辑区拖拽处理失败:', e);
-                EventBus.emit('error:editor_drop', { error: e.message });
             }
         },
 

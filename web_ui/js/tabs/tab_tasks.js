@@ -85,9 +85,6 @@ const TabTasks = {
             promptEl.addEventListener('input', (e) => this._onPromptInput(e));
             promptEl.addEventListener('keydown', (e) => this._onPromptKeydown(e));
             promptEl.addEventListener('focus', () => this._onPromptFocus());
-            // 编辑区拖拽事件
-            promptEl.addEventListener('dragenter', (e) => this._onPromptDragEnter(e));
-            promptEl.addEventListener('dragleave', (e) => this._onPromptDragLeave(e));
             promptEl.addEventListener('dragover', (e) => this._onPromptDragover(e));
             promptEl.addEventListener('drop', (e) => this._onPromptDrop(e));
         }
@@ -120,21 +117,25 @@ const TabTasks = {
             });
         });
 
+        // ============ Reference 预览卡片事件委托 ============
+        const previewContainer = document.getElementById('reference-preview-container');
+        if (previewContainer) {
+            previewContainer.addEventListener('click', (e) => {
+                const card = e.target.closest('.preview-card');
+                if (!card) return;
+                const idx = parseInt(card.dataset.index, 10);
+                const files = AppState.uploadedFiles || [];
+                const file = files[idx];
+                if (!file) return;
+                if (window.electronAPI && file.path) {
+                    window.electronAPI.previewMedia(file.path);
+                }
+            });
+        }
+
         // ============ Reference 上传区拖拽 ============
         const refContainer = document.getElementById('reference-dropzone');
         if (refContainer) {
-            // 点击打开文件选择
-            refContainer.addEventListener('click', (e) => {
-                if (e.target.closest('.preview-card')) return;
-                window.API.openAndProcessFiles();
-            });
-            // 拖拽进入
-            refContainer.addEventListener('dragenter', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                window.__isDragging = true;
-                refContainer.classList.add('drag-active');
-            });
             refContainer.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -145,17 +146,11 @@ const TabTasks = {
                 e.preventDefault();
                 e.stopPropagation();
                 refContainer.classList.remove('drag-over');
-                refContainer.classList.remove('drag-active');
-                if (!refContainer.contains(e.relatedTarget)) {
-                    window.__isDragging = false;
-                }
             });
             refContainer.addEventListener('drop', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 refContainer.classList.remove('drag-over');
-                refContainer.classList.remove('drag-active');
-                window.__isDragging = false;
 
                 const files = e.dataTransfer?.files;
                 if (files && files.length > 0) {
@@ -163,7 +158,7 @@ const TabTasks = {
                     for (let i = 0; i < files.length; i++) {
                         if (files[i].path) paths.push(files[i].path);
                     }
-                    if (paths.length > 0 && window.API) {
+                    if (paths.length > 0 && window.API && window.API.processFiles) {
                         window.API.processFiles(paths);
                     }
                 }
@@ -190,9 +185,9 @@ const TabTasks = {
             }
         });
 
-        // 编辑区拖拽完成（精准光标定位插入标签）
-        EventBus.on('editor:dropped', (data) => {
-            console.log('[TabTasks] 收到 editor:dropped', data);
+        // 编辑区拖拽完成
+        EventBus.on('files:dropped', (data) => {
+            console.log('[TabTasks] 收到 files:dropped', data);
             if (data.files && data.files.length > 0) {
                 this._insertRefTagsAtCursor(data.files, data.drop_pos);
             }
@@ -441,117 +436,21 @@ const TabTasks = {
         } else {
             e.dataTransfer.dropEffect = 'copy';
         }
-        this._updateDragCursor(e.clientX, e.clientY);
-    },
-
-    _updateDragCursor: function(clientX, clientY) {
-        const editor = document.getElementById('dreaminaPrompt');
-        const cursor = document.getElementById('drag-cursor');
-        if (!editor || !cursor) return;
-
-        const editorRect = editor.getBoundingClientRect();
-        const isOverEditor = clientX >= editorRect.left && clientX <= editorRect.right &&
-                             clientY >= editorRect.top && clientY <= editorRect.bottom;
-
-        if (!isOverEditor) {
-            cursor.style.display = 'none';
-            return;
-        }
-
-        // 尝试用 caretRangeFromPoint 精准定位光标
-        let range = null;
-        if (document.caretRangeFromPoint) {
-            range = document.caretRangeFromPoint(clientX, clientY);
-        } else if (document.caretPositionFromPoint) {
-            const cp = document.caretPositionFromPoint(clientX, clientY);
-            if (cp) {
-                range = document.createRange();
-                range.setStart(cp.offsetNode, cp.offset);
-                range.collapse(true);
-            }
-        }
-
-        if (range) {
-            const inEditor = editor.contains(range.startContainer) || editor === range.startContainer;
-            if (inEditor) {
-                try {
-                    const sel = window.getSelection();
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-
-                    const cursorRect = range.getBoundingClientRect();
-                    const isInvalidRect = cursorRect.left === 0 && cursorRect.top === 0 && cursorRect.height === 0;
-                    if (cursorRect && cursorRect.width !== undefined && !isInvalidRect) {
-                        cursor.style.left = cursorRect.left + 'px';
-                        cursor.style.top = cursorRect.top + 'px';
-                        cursor.style.height = (cursorRect.height > 0 ? cursorRect.height : 18) + 'px';
-                        cursor.style.display = 'block';
-                    } else {
-                        cursor.style.display = 'none';
-                    }
-                } catch (e) {
-                    cursor.style.display = 'none';
-                }
-                return;
-            }
-        }
-        cursor.style.display = 'none';
-    },
-
-    _onPromptDragEnter: function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const elementUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
-        if (elementUnderMouse && elementUnderMouse.closest('.ref-tag')) {
-            return;
-        }
-        const editor = document.getElementById('dreaminaPrompt');
-        if (editor) editor.classList.add('drag-over');
-        window.__isDragging = true;
-    },
-
-    _onPromptDragLeave: function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const editor = document.getElementById('dreaminaPrompt');
-        if (!editor) return;
-        // 只有真正离开编辑区才移除样式（检查 relatedTarget）
-        if (!e.relatedTarget || !editor.contains(e.relatedTarget)) {
-            editor.classList.remove('drag-over');
-        }
     },
 
     _onPromptDrop: function(e) {
         e.preventDefault();
         e.stopPropagation();
-        const editor = document.getElementById('dreaminaPrompt');
-        if (editor) editor.classList.remove('drag-over');
-        window.__isDragging = false;
-
-        // 清除 drag-cursor
-        const cursor = document.getElementById('drag-cursor');
-        if (cursor) cursor.remove();
-
         const files = e.dataTransfer?.files;
-        if (!files || files.length === 0) return;
-
-        const dropZone = document.getElementById('reference-dropzone');
-        const elemUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
-
-        // 判断是否落在 reference-dropzone 内（应该阻止默认行为，让 dropzone 处理）
-        if (dropZone && (dropZone.contains(elemUnderMouse) || elemUnderMouse === dropZone)) {
-            // 交给 reference-dropzone 的 drop 处理器（会阻止事件冒泡）
-            return;
+        if (files && files.length > 0) {
+            const paths = [];
+            for (let i = 0; i < files.length; i++) {
+                paths.push(files[i].path || files[i].name);
+            }
+            const dropPos = { x: e.clientX, y: e.clientY };
+            // 发送到后端处理，然后通过 files:dropped 事件插入标签
+            window.API.processEditorDropFiles(paths, dropPos);
         }
-
-        // 落在编辑区或其他区域：提取路径并处理
-        const paths = [];
-        for (let i = 0; i < files.length; i++) {
-            paths.push(files[i].path || files[i].name);
-        }
-
-        const dropPos = { x: e.clientX, y: e.clientY };
-        window.API.processEditorDropFiles(paths, dropPos);
     },
 
     // ============================================================
@@ -570,15 +469,34 @@ const TabTasks = {
 
     _updateMentionDropdownPosition: function() {
         const dropdown = document.getElementById('mentionDropdown');
+        if (!dropdown || !this._mentionState.active) return;
         const editor = document.getElementById('dreaminaPrompt');
-        if (!dropdown || !this._mentionState.active || !editor) return;
+        if (!editor) return;
 
-        const selection = window.getSelection();
-        if (selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            const cursorRect = range.getBoundingClientRect();
-            dropdown.style.left = (cursorRect.left + window.scrollX) + 'px';
-            dropdown.style.top = (cursorRect.bottom + 4 + window.scrollY) + 'px';
+        let atRect = null;
+        const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null);
+        let accumulatedOffset = 0;
+
+        while (walker.nextNode()) {
+            const node = walker.currentNode;
+            const nodeLength = node.textContent.length;
+            if (accumulatedOffset + nodeLength > this._mentionState.startOffset) {
+                const offsetInNode = this._mentionState.startOffset - accumulatedOffset;
+                try {
+                    const range = document.createRange();
+                    range.setStart(node, offsetInNode);
+                    range.setEnd(node, offsetInNode + 1);
+                    const rects = range.getClientRects();
+                    if (rects.length > 0) atRect = rects[0];
+                } catch (e) {}
+                break;
+            }
+            accumulatedOffset += nodeLength;
+        }
+
+        if (atRect) {
+            dropdown.style.left = (atRect.left + window.scrollX) + 'px';
+            dropdown.style.top = (atRect.bottom + 4 + window.scrollY) + 'px';
         }
     },
 
@@ -842,40 +760,40 @@ const TabTasks = {
 
                 let bgClass = 'bg-[#1c1c1e]';
                 let typeLabel = '';
+                let cardContent = '';
                 const fileType = file.type || 'unknown';
 
                 if (fileType === 'image') {
                     imgCount++;
                     typeLabel = 'Image' + imgCount;
-                    const imgSrc = file.thumbnail_base64 || file.path || file.url || '';
-                    var cardContent = '<img src="' + imgSrc + '" class="w-full h-full object-cover rounded-md" />';
+                    const safePath = file.path ? 'file:///' + file.path.replace(/\\/g, '/') : '';
+                    const imgSrc = file.thumbnail_base64 || safePath || file.url || '';
+                    cardContent = '<img src="' + imgSrc + '" class="w-full h-full object-cover rounded-md" />';
                 } else if (fileType === 'video') {
                     vidCount++;
                     typeLabel = 'Video' + vidCount;
-                    var imgSrc2 = file.thumbnail_base64 || '';
-                    var cardContent = '<img src="' + imgSrc2 + '" class="w-full h-full object-cover rounded-md" />' +
+                    cardContent = '<img src="' + (file.thumbnail_base64 || '') + '" class="w-full h-full object-cover rounded-md" />' +
                         '<div class="absolute bottom-1 left-1 bg-black/60 px-1 rounded text-white text-[8px] font-bold">' + (file.duration || '00:00') + '</div>';
                 } else if (fileType === 'audio') {
                     audCount++;
                     typeLabel = 'Audio' + audCount;
                     bgClass = 'bg-[#5a6b82]';
-                    var cardContent = '<div class="flex flex-col items-center justify-center h-full w-full">' +
+                    cardContent = '<div class="flex flex-col items-center justify-center h-full w-full">' +
                         '<svg class="w-6 h-6 text-white mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>' +
                         '<span class="text-white text-[10px] font-medium leading-none">' + typeLabel + '</span>' +
                         '</div>';
                 } else {
                     typeLabel = 'File';
                     bgClass = 'bg-[#3a3a3a]';
-                    var cardContent = '<div class="flex flex-col items-center justify-center h-full w-full">' +
+                    cardContent = '<div class="flex flex-col items-center justify-center h-full w-full">' +
                         '<svg class="w-6 h-6 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>' +
                         '<span class="text-gray-400 text-[10px] font-medium leading-none">' + typeLabel + '</span>' +
                         '</div>';
                 }
 
-                // 点击卡片：打开浏览器查看器（图片直接查看，视频/音频使用本地路径）
-                var cardHtml = '<div class="preview-card group absolute inset-0 ' + bgClass + ' rounded-lg border-2 border-white shadow-lg transform ' + angleClass + ' cursor-pointer" ' +
+                let cardHtml = '<div class="preview-card group absolute inset-0 ' + bgClass + ' rounded-lg border-2 border-white shadow-lg transform ' + angleClass + ' cursor-pointer" ' +
                     'style="z-index: ' + zIndex + '; --expand-x: ' + expandX + 'px; --expand-rot: ' + expandRot + ';" ' +
-                    'onclick="event.stopPropagation(); if(window.electronAPI && window.AppState.uploadedFiles[' + index + ']) { window.electronAPI.previewMedia(window.AppState.uploadedFiles[' + index + '].path); }">' +
+                    'data-index="' + index + '">' +
 
                     '<div class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-[#2a2a2d] border border-[#3c3c3e] text-gray-200 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg pointer-events-none z-50">' +
                     typeLabel + '</div>' +
@@ -978,6 +896,26 @@ const TabTasks = {
     // 素材标签插入
     // ============================================================
 
+    /**
+     * 确保光标不会落在 ref-tag 内部，防止拖拽时新标签嵌套进旧标签
+     */
+    _ensureCursorOutsideTags: function(editor, cursorRange) {
+        if (!cursorRange) return cursorRange;
+        const container = cursorRange.startContainer;
+        let currentNode = container;
+
+        while (currentNode && currentNode !== editor) {
+            if (currentNode.classList && currentNode.classList.contains('ref-tag')) {
+                const newRange = document.createRange();
+                newRange.setStartAfter(currentNode);
+                newRange.collapse(true);
+                return newRange;
+            }
+            currentNode = currentNode.parentNode;
+        }
+        return cursorRange;
+    },
+
     _insertRefTagsAtCursor: function(files, dropPos) {
         if (!files || files.length === 0) return;
 
@@ -1013,6 +951,9 @@ const TabTasks = {
             cursorRange.selectNodeContents(editor);
             cursorRange.collapse(false);
         }
+
+        // 防止新标签嵌套进已有的 ref-tag
+        cursorRange = this._ensureCursorOutsideTags(editor, cursorRange);
 
         const selection = window.getSelection();
         selection.removeAllRanges();
