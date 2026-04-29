@@ -692,8 +692,8 @@
             <div class="flex flex-col w-full rounded-2xl bg-[#1c1c1e] p-4 gap-3 border border-[#2c2c2e]">
   
                 <div class="flex flex-row items-start gap-3">
-                    <!-- Reference 拖拽区域 - 事件由 TabTasks 前端拦截处理 -->
-                    <div id="reference-dropzone" class="relative w-16 h-20 shrink-0 cursor-pointer group mt-1">
+                    <!-- Reference 拖拽区域 - 纯展示，事件由前端拦截 -->
+                    <div id="reference-dropzone" class="relative w-16 h-20 shrink-0 cursor-pointer group mt-1" onclick="if(window.API) window.API.openAndProcessFiles();">
                         
                         <div id="reference-preview-container" class="relative w-full h-full">
                             <!-- 空状态占位 -->
@@ -1006,9 +1006,6 @@
     
     <!-- Toast -->
     <div class="toast" id="toast"></div>
-
-    <!-- 拖拽光标（由 JavaScript 动态控制位置） -->
-    <div id="drag-cursor" style="position:fixed;width:2px;height:1.2em;background:rgb(0,202,224);pointer-events:none;z-index:9999;transition:none;margin:0;padding:0;display:none;"></div>
 
     <!-- 图片查看器弹窗 -->
     <div class="viewer-overlay" id="viewerOverlay" onclick="closeViewer(event)">
