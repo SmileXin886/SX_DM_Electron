@@ -773,7 +773,7 @@ const TabTasks = {
                 if (fileType === 'image') {
                     imgCount++;
                     typeLabel = 'Image' + imgCount;
-                    const safePath = file.path ? 'file:///' + file.path.replace(/\\/g, '/') : '';
+                    const safePath = file.path ? 'app-media://local/' + file.path.replace(/\\/g, '/') : '';
                     const imgSrc = file.thumbnail_base64 || safePath || file.url || '';
                     cardContent = '<img src="' + imgSrc + '" class="w-full h-full object-cover rounded-md" />';
                 } else if (fileType === 'video') {
@@ -859,12 +859,12 @@ const TabTasks = {
     _pathToFileUrl: function(filePath) {
         if (!filePath) return '';
         // 已经是 file:// URL 则直接返回
-        if (filePath.startsWith('file://') || filePath.startsWith('data:') || filePath.startsWith('blob:')) {
+        if (filePath.startsWith('app-media://') || filePath.startsWith('file://') || filePath.startsWith('data:') || filePath.startsWith('blob:')) {
             return filePath;
         }
-        // Windows 路径：D:\xxx → /D:/xxx
+        // Windows 路径：D:\xxx → /D:/xxx，加入 local/ 防止盘符解析 Bug
         const normalized = filePath.replace(/\\/g, '/');
-        return 'file:///' + normalized;
+        return 'app-media://local/' + normalized;
     },
 
     openViewer: function(file) {

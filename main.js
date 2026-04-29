@@ -8,9 +8,10 @@
  * 4. 应用退出时干净地 kill Python 子进程
  */
 
-const { app, BrowserWindow, ipcMain, dialog, Menu, screen, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, screen, shell, protocol, net } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
+const { pathToFileURL } = require('url');
 
 // ==================== 日志工具 ====================
 function log(level, ...args) {
@@ -25,6 +26,20 @@ const logger = {
 };
 
 // ==================== 全局状态 ====================
+// 注册自定义协议特权（必须在 app.whenReady() 之前执行）
+protocol.registerSchemesAsPrivileged([
+    {
+        scheme: 'app-media',
+        privileges: {
+            standard: true,
+            secure: true,
+            supportFetchAPI: true,
+            bypassCSP: true,
+            corsEnabled: true
+        }
+    }
+]);
+
 let mainWindow = null;
 
 // 定位脚本目录（开发环境 vs 打包环境）
@@ -77,7 +92,7 @@ function createWindow() {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,         // 安全隔离 preload 与 renderer
             nodeIntegration: false,         // renderer 不能直接 require('electron')
-            webSecurity: false,  // 必须为 false，否则 file:// 协议下的 ES Module 无法加载
+            webSecurity: true,  // 开启安全策略，配合 app-media 自定义协议访问本地文件
             sandbox: false,
         },
     });
@@ -324,6 +339,14 @@ app.whenReady().then(() => {
     logger.info('  WEB_UI_DIR: ' + WEB_UI_DIR);
     logger.info('  PYTHON_EXE: ' + PYTHON_EXE);
     logger.info('=================================================');
+
+    // 注册自定义安全协议，替代裸 file:// 访问
+    // request.url 格式: "app-media://local/D:/videos/test.mp4"
+    protocol.handle('app-media', (request) => {
+        let filePath = request.url.replace('app-media://local/', '');
+        filePath = decodeURIComponent(filePath);
+        return net.fetch(pathToFileURL(filePath).href);
+    });
 
     createMenu();
     createWindow();

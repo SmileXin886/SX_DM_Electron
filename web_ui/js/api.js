@@ -49,7 +49,7 @@
     async function extractMediaInfo(filePath) {
         const type = getFileType(filePath);
         const name = filePath.split(/[\\/]/).pop();
-        const url = 'file:///' + filePath.replace(/\\/g, '/');
+        const url = 'app-media://local/' + filePath.replace(/\\/g, '/');
         console.log('[API.extractMediaInfo]', { filePath, type, name, url });
 
         const info = {
