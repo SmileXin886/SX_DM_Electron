@@ -383,7 +383,7 @@
                 }
 
                 case 'get_presets':
-                    return this.getPresets();
+                    return await this.getPresets();
 
                 case 'open_file_dialog':
                     return this.openAndProcessFiles();
@@ -479,7 +479,7 @@
         },
 
         /**
-         * 将文件路径发送给后端处理
+         * 将文件路径发送给后端处理（优先 Electron IPC）
          */
         async processFiles(paths) {
             try {
@@ -489,9 +489,17 @@
                     EventBus.emit('progress:files', { percent: pct, message: `已解析 ${idx}/${total} 个文件` });
                 });
 
-                EventBus.emit('progress:files', { percent: 95, message: '正在提交到后端...' });
-                const result = await httpPost('/api/files/process', { files: enrichedFiles });
-                console.log('[API] 文件处理结果:', result);
+                EventBus.emit('progress:files', { percent: 95, message: '正在提交...' });
+                let result;
+                try {
+                    result = await window.electronAPI.addFiles(enrichedFiles);
+                    if (!result || result.success === false) throw new Error('IPC failed');
+                    console.log('[API] 文件处理结果（IPC）:', result);
+                } catch (e) {
+                    // 降级：HTTP
+                    result = await httpPost('/api/files/process', { files: enrichedFiles });
+                    console.log('[API] 文件处理结果（HTTP）:', result);
+                }
                 EventBus.emit('progress:files', { percent: 100, message: '完成' });
                 EventBus.emit('files:processed', result);
                 EventBus.emit('files:listUpdated', result.files || []);
@@ -502,12 +510,17 @@
         },
 
         /**
-         * 获取当前文件列表
+         * 获取当前文件列表（优先 Electron IPC）
          */
         async getFiles() {
             try {
-                const result = await httpGet('/api/files');
-                return result.files || [];
+                const result = await window.electronAPI.getFiles();
+                if (result && result.success !== false) {
+                    return result.files || [];
+                }
+                // 降级：HTTP
+                const httpResult = await httpGet('/api/files');
+                return httpResult.files || [];
             } catch (e) {
                 console.error('[API] 获取文件列表失败:', e);
                 return [];
@@ -515,12 +528,20 @@
         },
 
         /**
-         * 删除文件
+         * 删除文件（优先 Electron IPC）
          */
         async removeFile(index) {
             try {
-                const result = await httpDelete('/api/files/' + index);
-                console.log('[API] 删除文件结果:', result);
+                let result;
+                try {
+                    result = await window.electronAPI.removeFile(index);
+                    if (!result || result.success === false) throw new Error('IPC failed');
+                    console.log('[API] 删除文件结果（IPC）:', result);
+                } catch (e) {
+                    // 降级：HTTP
+                    result = await httpDelete('/api/files/' + index);
+                    console.log('[API] 删除文件结果（HTTP）:', result);
+                }
                 EventBus.emit('file:removed', { index });
                 EventBus.emit('files:listUpdated', result.files || []);
                 return result;
@@ -531,15 +552,20 @@
         },
 
         /**
-         * 处理编辑区拖拽的文件
+         * 处理编辑区拖拽的文件（优先 Electron IPC）
          */
         async processEditorDropFiles(paths, dropPos) {
             try {
                 const enrichedFiles = await extractAllMediaInfo(paths);
-                const result = await httpPost('/api/files/process', { files: enrichedFiles, for_editor: true });
+                let result;
+                try {
+                    result = await window.electronAPI.addFiles(enrichedFiles);
+                    if (!result || result.success === false) throw new Error('IPC failed');
+                } catch (e) {
+                    result = await httpPost('/api/files/process', { files: enrichedFiles, for_editor: true });
+                }
                 console.log('[API] 编辑区拖拽处理结果:', result);
                 if (result.files && result.files.length > 0) {
-                    // 在 drop 位置插入标签
                     EventBus.emit('files:dropped', {
                         files: result.files,
                         drop_pos: dropPos
@@ -554,63 +580,82 @@
 
         // ============ 预设管理 ============
 
-        /**
-         * 获取预设列表
-         */
-        async getPresets() {
-            try {
-                const result = await httpGet('/api/presets');
+    /**
+     * 获取预设列表（优先 Electron IPC，无需 FastAPI 服务）
+     */
+    async getPresets() {
+        try {
+            const result = await window.electronAPI.getPresets();
+            if (result && result.success) {
                 return result.presets || [];
-            } catch (e) {
-                console.error('[API] 获取预设失败:', e);
-                return [];
             }
-        },
+            // 降级：尝试 HTTP
+            const httpResult = await httpGet('/api/presets');
+            return httpResult.presets || [];
+        } catch (e) {
+            console.error('[API] 获取预设失败:', e);
+            return [];
+        }
+    },
 
-        /**
-         * 创建预设
-         */
-        async createPreset(config) {
-            try {
-                const result = await httpPost('/api/presets', config);
-                console.log('[API] 创建预设结果:', result);
+    /**
+     * 创建预设（优先 Electron IPC）
+     */
+    async createPreset(config) {
+        try {
+            const result = await window.electronAPI.createPreset(config);
+            if (result && result.success) {
+                console.log('[API] 创建预设结果（IPC）:', result);
                 EventBus.emit('preset:created', result);
                 return result;
-            } catch (e) {
-                console.error('[API] 创建预设失败:', e);
-                EventBus.emit('error:preset', { error: e.message });
             }
-        },
+            // 降级：尝试 HTTP
+            const httpResult = await httpPost('/api/presets', config);
+            console.log('[API] 创建预设结果（HTTP）:', httpResult);
+            EventBus.emit('preset:created', httpResult);
+            return httpResult;
+        } catch (e) {
+            console.error('[API] 创建预设失败:', e);
+            EventBus.emit('error:preset', { error: e.message });
+        }
+    },
 
-        /**
-         * 应用预设
-         */
-        async applyPreset(id) {
-            try {
-                const result = await httpPost('/api/presets/' + id + '/apply', {});
-                console.log('[API] 应用预设结果:', result);
-                EventBus.emit('preset:applied', result);
-                return result;
-            } catch (e) {
-                console.error('[API] 应用预设失败:', e);
-                EventBus.emit('error:preset', { error: e.message });
-            }
-        },
+    /**
+     * 应用预设（仅查询，不需要写操作，走 HTTP）
+     */
+    async applyPreset(id) {
+        try {
+            const result = await httpPost('/api/presets/' + id + '/apply', {});
+            console.log('[API] 应用预设结果:', result);
+            EventBus.emit('preset:applied', result);
+            return result;
+        } catch (e) {
+            console.error('[API] 应用预设失败:', e);
+            EventBus.emit('error:preset', { error: e.message });
+        }
+    },
 
-        /**
-         * 删除预设
-         */
-        async deletePreset(id) {
-            try {
-                const result = await httpDelete('/api/presets/' + id);
-                console.log('[API] 删除预设结果:', result);
+    /**
+     * 删除预设（优先 Electron IPC）
+     */
+    async deletePreset(id) {
+        try {
+            const result = await window.electronAPI.deletePreset(id);
+            if (result && result.success !== false) {
+                console.log('[API] 删除预设结果（IPC）:', result);
                 EventBus.emit('preset:deleted', result);
                 return result;
-            } catch (e) {
-                console.error('[API] 删除预设失败:', e);
-                EventBus.emit('error:preset', { error: e.message });
             }
-        },
+            // 降级：尝试 HTTP
+            const httpResult = await httpDelete('/api/presets/' + id);
+            console.log('[API] 删除预设结果（HTTP）:', httpResult);
+            EventBus.emit('preset:deleted', httpResult);
+            return httpResult;
+        } catch (e) {
+            console.error('[API] 删除预设失败:', e);
+            EventBus.emit('error:preset', { error: e.message });
+        }
+    },
 
 
         // ============ WebSocket 发送 ============

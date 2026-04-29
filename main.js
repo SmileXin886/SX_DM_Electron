@@ -273,6 +273,135 @@ ipcMain.handle('server:stop', async (event) => {
     return true;
 });
 
+// ==================== Python IPC 子进程管理 ====================
+
+/**
+ * 通过独立 Python 脚本执行 preset CRUD（无需 FastAPI 服务）
+ * action: preset_list | preset_get | preset_create | preset_delete | preset_search
+ *        file_list | file_add | file_remove | file_clear | health
+ */
+function runPythonIPC(action, ...args) {
+    return new Promise((resolve, reject) => {
+        const proc = spawn(PYTHON_EXE, [SERVER_SCRIPT.replace('server.py', 'preset_ipc.py'), action, ...args], {
+            cwd: APP_DIR,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            windowsHide: true,
+            shell: false,
+            env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        proc.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
+        proc.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+
+        proc.on('error', (err) => {
+            logger.error('Python IPC 进程启动失败:', err.message);
+            reject(err);
+        });
+
+        proc.on('exit', (code) => {
+            if (code !== 0) {
+                logger.error('Python IPC 异常退出:', code, stderr);
+                reject(new Error('Python IPC exited with code ' + code));
+                return;
+            }
+            try {
+                const result = JSON.parse(stdout.trim());
+                resolve(result);
+            } catch (e) {
+                logger.error('Python IPC 输出解析失败:', stdout, e.message);
+                reject(new Error('Invalid JSON from Python IPC: ' + stdout));
+            }
+        });
+    });
+}
+
+/**
+ * 【系统级】预设列表
+ */
+ipcMain.handle('preset:list', async () => {
+    try {
+        return await runPythonIPC('preset_list');
+    } catch (e) {
+        logger.error('[IPC] preset:list 失败:', e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+/**
+ * 【系统级】创建预设
+ */
+ipcMain.handle('preset:create', async (event, presetData) => {
+    try {
+        return await runPythonIPC('preset_create', JSON.stringify(presetData));
+    } catch (e) {
+        logger.error('[IPC] preset:create 失败:', e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+/**
+ * 【系统级】删除预设
+ */
+ipcMain.handle('preset:delete', async (event, presetId) => {
+    try {
+        return await runPythonIPC('preset_delete', presetId);
+    } catch (e) {
+        logger.error('[IPC] preset:delete 失败:', e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+/**
+ * 【系统级】文件列表
+ */
+ipcMain.handle('file:list', async () => {
+    try {
+        return await runPythonIPC('file_list');
+    } catch (e) {
+        logger.error('[IPC] file:list 失败:', e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+/**
+ * 【系统级】添加文件
+ */
+ipcMain.handle('file:add', async (event, files) => {
+    try {
+        return await runPythonIPC('file_add', JSON.stringify(files));
+    } catch (e) {
+        logger.error('[IPC] file:add 失败:', e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+/**
+ * 【系统级】删除文件
+ */
+ipcMain.handle('file:remove', async (event, index) => {
+    try {
+        return await runPythonIPC('file_remove', String(index));
+    } catch (e) {
+        logger.error('[IPC] file:remove 失败:', e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+/**
+ * 【系统级】清空文件
+ */
+ipcMain.handle('file:clear', async () => {
+    try {
+        return await runPythonIPC('file_clear');
+    } catch (e) {
+        logger.error('[IPC] file:clear 失败:', e.message);
+        return { success: false, error: e.message };
+    }
+});
+
 // ==================== 应用生命周期 ====================
 
 app.whenReady().then(() => {

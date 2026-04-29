@@ -127,9 +127,8 @@ const TabTasks = {
                 const files = AppState.uploadedFiles || [];
                 const file = files[idx];
                 if (!file) return;
-                if (window.electronAPI && file.path) {
-                    window.electronAPI.previewMedia(file.path);
-                }
+                // 点击预览 → 改为网页内置查看器弹窗，不再打开系统播放器
+                this.openViewer(file);
             });
         }
 
@@ -613,11 +612,7 @@ const TabTasks = {
             const idx = parseInt(tag.dataset.index);
             const f = AppState.uploadedFiles[idx];
             if (f) {
-                if (window.electronAPI && f.path) {
-                    window.electronAPI.previewMedia(f.path);
-                } else {
-                    this.openViewer(f);
-                }
+                this.openViewer(f);
             }
         });
 
@@ -842,8 +837,23 @@ const TabTasks = {
     },
 
     // ============================================================
-    // 查看器（浏览器原生，不依赖 PyQt）
+    // 查看器（网页内置，不依赖本地播放器）
     // ============================================================
+
+    /**
+     * 将 Windows 绝对路径转换为 file:// URL
+     * D:\path\to\file.mp4 → file:///D:/path/to/file.mp4
+     */
+    _pathToFileUrl: function(filePath) {
+        if (!filePath) return '';
+        // 已经是 file:// URL 则直接返回
+        if (filePath.startsWith('file://') || filePath.startsWith('data:') || filePath.startsWith('blob:')) {
+            return filePath;
+        }
+        // Windows 路径：D:\xxx → /D:/xxx
+        const normalized = filePath.replace(/\\/g, '/');
+        return 'file:///' + normalized;
+    },
 
     openViewer: function(file) {
         const overlay = document.getElementById('viewerOverlay');
@@ -851,32 +861,66 @@ const TabTasks = {
         const videoEl = document.getElementById('viewerVideo');
         const audioEl = document.getElementById('viewerAudio');
         const infoEl = document.getElementById('viewerInfo');
+        const pathEl = document.getElementById('viewerFilePath');
 
         if (!overlay) return;
 
+        // 停止并重置所有媒体元素
         videoEl.pause();
+        videoEl.src = '';
         videoEl.style.display = 'none';
         audioEl.pause();
+        audioEl.src = '';
         audioEl.style.display = 'none';
         imgEl.style.display = 'none';
+        imgEl.src = '';
 
-        const type = file.type || 'image';
+        const type = file.type || 'unknown';
         const src = file.thumbnail_base64 || file.path || file.url || '';
+        const fileName = file.name || (file.path ? file.path.split(/[\\/]/).pop() : '未知文件');
+        const filePath = file.path || '';
 
-        if (type === 'video' && file.path) {
-            videoEl.src = file.path;
-            videoEl.style.display = 'block';
-            infoEl.textContent = (file.name || 'Video') + (file.duration ? ' · ' + file.duration : '');
-        } else if (type === 'audio' && file.path) {
-            audioEl.src = file.path;
-            audioEl.style.display = 'block';
-            infoEl.textContent = (file.name || 'Audio') + (file.duration ? ' · ' + file.duration : '');
-        } else if (src) {
-            imgEl.src = src;
-            imgEl.style.display = 'block';
-            infoEl.textContent = file.name || 'Image';
+        // 显示原文件路径（供插件使用）
+        if (pathEl) {
+            if (filePath) {
+                pathEl.textContent = filePath;
+                pathEl.style.display = 'block';
+            } else {
+                pathEl.style.display = 'none';
+            }
+        }
+
+        if (type === 'video') {
+            const videoUrl = file.path ? this._pathToFileUrl(file.path) : src;
+            if (videoUrl) {
+                videoEl.src = videoUrl;
+                videoEl.style.display = 'block';
+                infoEl.textContent = fileName + (file.duration ? ' · ' + file.duration : '');
+            }
+        } else if (type === 'audio') {
+            const audioUrl = file.path ? this._pathToFileUrl(file.path) : src;
+            if (audioUrl) {
+                audioEl.src = audioUrl;
+                audioEl.style.display = 'block';
+                infoEl.textContent = fileName + (file.duration ? ' · ' + file.duration : '');
+            }
+        } else if (type === 'image') {
+            const imgUrl = file.thumbnail_base64 || (file.path ? this._pathToFileUrl(file.path) : src);
+            if (imgUrl) {
+                imgEl.src = imgUrl;
+                imgEl.style.display = 'block';
+                infoEl.textContent = fileName;
+            }
         } else {
-            return;
+            // 未知类型，尝试直接用路径
+            if (src) {
+                const fallbackUrl = src.startsWith('file:') || src.startsWith('http') ? src : this._pathToFileUrl(src);
+                if (fallbackUrl.startsWith('file:///') || fallbackUrl.startsWith('http')) {
+                    imgEl.src = fallbackUrl;
+                    imgEl.style.display = 'block';
+                    infoEl.textContent = fileName;
+                }
+            }
         }
 
         overlay.classList.add('show');
@@ -999,11 +1043,7 @@ const TabTasks = {
                 const idx = parseInt(tag.dataset.index);
                 const f = AppState.uploadedFiles[idx];
                 if (f) {
-                    if (window.electronAPI && f.path) {
-                        window.electronAPI.previewMedia(f.path);
-                    } else {
-                        this.openViewer(f);
-                    }
+                    this.openViewer(f);
                 }
             });
 

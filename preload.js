@@ -58,6 +58,49 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * 停止 Python 服务
      */
     stopServer: () => ipcRenderer.invoke('server:stop'),
+
+    // ==================== 预设管理 API（独立于 FastAPI 服务）====================
+
+    /**
+     * 获取所有预设
+     */
+    getPresets: () => ipcRenderer.invoke('preset:list'),
+
+    /**
+     * 创建预设
+     * @param {Object} presetData - { name, settings, textContent, imageURIs, file_path }
+     */
+    createPreset: (presetData) => ipcRenderer.invoke('preset:create', presetData),
+
+    /**
+     * 删除预设
+     * @param {string} presetId
+     */
+    deletePreset: (presetId) => ipcRenderer.invoke('preset:delete', presetId),
+
+    // ==================== 文件管理 API（独立于 FastAPI 服务）====================
+
+    /**
+     * 获取文件列表
+     */
+    getFiles: () => ipcRenderer.invoke('file:list'),
+
+    /**
+     * 添加文件
+     * @param {Array} files - 文件对象数组
+     */
+    addFiles: (files) => ipcRenderer.invoke('file:add', files),
+
+    /**
+     * 删除文件
+     * @param {number} index
+     */
+    removeFile: (index) => ipcRenderer.invoke('file:remove', index),
+
+    /**
+     * 清空文件列表
+     */
+    clearFiles: () => ipcRenderer.invoke('file:clear'),
 });
 
 /**
