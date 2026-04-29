@@ -854,7 +854,7 @@ const TabTasks = {
 
     /**
      * 将 Windows 绝对路径转换为 file:// URL
-     * D:\path\to\file.mp4 → file:///D:/path/to/file.mp4
+     * D:\path\to\file.mp4 → app-media://local/D:/path/to/file.mp4
      */
     _pathToFileUrl: function(filePath) {
         if (!filePath) return '';
@@ -927,7 +927,7 @@ const TabTasks = {
             // 未知类型，尝试直接用路径
             if (src) {
                 const fallbackUrl = src.startsWith('file:') || src.startsWith('http') ? src : this._pathToFileUrl(src);
-                if (fallbackUrl.startsWith('file:///') || fallbackUrl.startsWith('http')) {
+                if (fallbackUrl.startsWith('app-media://') || fallbackUrl.startsWith('file:///') || fallbackUrl.startsWith('http')) {
                     imgEl.src = fallbackUrl;
                     imgEl.style.display = 'block';
                     infoEl.textContent = fileName;

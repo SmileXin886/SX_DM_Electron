@@ -181,7 +181,7 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
             'type': file_type,
             'path': path,
             'name': f.get('name', os.path.basename(path)),
-            'url': f.get('url', 'file:///' + path.replace('\\', '/')),
+            'url': f.get('url', 'app-media://local/' + path.replace('\\', '/')),
             'thumbnail_base64': f.get('thumbnail_base64', ''),
             'duration': f.get('duration', '00:00'),
             'duration_seconds': float(f.get('duration_seconds', 0)),
