@@ -58,10 +58,21 @@ const TabTasks = {
         this._subscribeEvents();
         this._syncStateToAppState();
 
-        // 根据初始模式设置比例选择器状态
+        // 初始化首尾帧上传器
+        this._initFrameUploader();
+
+        // 根据初始模式设置比例选择器状态和首尾帧上传器显示状态
         this._updateRatioSelectorState();
 
         console.log('[tab_tasks.js] 模块初始化完成');
+    },
+
+    // 初始化首尾帧上传器
+    _initFrameUploader: function() {
+        const container = document.getElementById('frame-uploader-container');
+        if (container && window.FrameUploader) {
+            this._frameUploader = new window.FrameUploader('frame-uploader-container');
+        }
     },
 
     _syncStateToAppState: function() {
@@ -164,6 +175,14 @@ const TabTasks = {
         // ============ Reference 上传区拖拽 ============
         const refContainer = document.getElementById('reference-dropzone');
         if (refContainer) {
+            // 点击打开文件选择
+            refContainer.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (window.API && window.API.openAndProcessFiles) {
+                    window.API.openAndProcessFiles();
+                }
+            });
+
             refContainer.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -461,10 +480,17 @@ const TabTasks = {
         const container = document.getElementById('ratio-selector-container');
         const btn = document.getElementById('ratio-dropdown-btn');
         const menu = document.getElementById('ratio-dropdown-menu');
+        const frameUploaderContainer = document.getElementById('frame-uploader-container');
 
         if (!container || !btn || !menu) return;
 
         const isFirstLastMode = this._state.omniMode === 'first_last';
+
+        // 控制 Reference 拖拽区域的显示/隐藏
+        const refDropzone = document.getElementById('reference-dropzone');
+        if (refDropzone) {
+            refDropzone.classList.toggle('hidden', isFirstLastMode);
+        }
 
         if (isFirstLastMode) {
             // 禁用状态
@@ -483,6 +509,11 @@ const TabTasks = {
 
             // 隐藏菜单（如果有的话）
             menu.classList.add('hidden');
+
+            // 显示首尾帧上传器
+            if (frameUploaderContainer) {
+                frameUploaderContainer.classList.remove('hidden');
+            }
         } else {
             // 启用状态
             btn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -492,6 +523,15 @@ const TabTasks = {
 
             // 恢复按钮文字
             this._updateRatioButtonUI();
+
+            // 隐藏首尾帧上传器
+            if (frameUploaderContainer) {
+                frameUploaderContainer.classList.add('hidden');
+                // 重置上传器状态
+                if (this._frameUploader) {
+                    this._frameUploader.reset();
+                }
+            }
         }
     },
 

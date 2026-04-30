@@ -11,6 +11,7 @@
     <script src="js/store.js"></script>
     <script src="js/api.js"></script>
     <script src="js/editor_tag_sync.js"></script>
+    <script src="js/frame_uploader.js"></script>
 
     <!-- 唯一的模块入口 -->
     <script type="module" src="js/app.js"></script>
@@ -706,16 +707,20 @@
             <div class="flex flex-col w-full rounded-2xl bg-[#1c1c1e] p-4 gap-3 border border-[#2c2c2e]">
   
                 <div class="flex flex-row items-start gap-3">
-                    <!-- Reference 拖拽区域 - 纯展示，事件由前端拦截 -->
-                    <div id="reference-dropzone" class="relative w-16 h-20 shrink-0 cursor-pointer group mt-1" onclick="if(window.API) window.API.openAndProcessFiles();">
-                        
-                        <div id="reference-preview-container" class="relative w-full h-full">
-                            <!-- 空状态占位 -->
-                            <div id="reference-placeholder" class="placeholder-card absolute inset-0 bg-[#2a2a2d] rounded-lg transform -rotate-3 flex flex-col items-center justify-center text-gray-500 text-[11px] group-hover:bg-[#323235] group-hover:scale-105 transition-all duration-200 border border-dashed border-gray-600/50">
-                                <svg class="w-4 h-4 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                <span>Referenc</span>
+                    <!-- Reference/首尾帧上传区域 - 根据模式动态切换 -->
+                    <div id="media-upload-area" class="shrink-0 mt-1">
+                        <!-- Reference 拖拽区域 (全能参考模式) -->
+                        <div id="reference-dropzone" class="relative w-16 h-20 cursor-pointer group">
+                            <div id="reference-preview-container" class="relative w-full h-full">
+                                <div id="reference-placeholder" class="placeholder-card absolute inset-0 bg-[#2a2a2d] rounded-lg transform -rotate-3 flex flex-col items-center justify-center text-gray-500 text-[11px] group-hover:bg-[#323235] group-hover:scale-105 transition-all duration-200 border border-dashed border-gray-600/50">
+                                    <svg class="w-4 h-4 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                    <span>Referenc</span>
+                                </div>
                             </div>
                         </div>
+
+                        <!-- 首尾帧上传器 (首尾帧模式) -->
+                        <div id="frame-uploader-container" class="hidden"></div>
                     </div>
                     
                     <div id="dreaminaPrompt" class="dreamina-prompt w-full bg-[#1c1c1e] outline-none resize-none text-gray-300 placeholder-gray-500 text-[16px] leading-relaxed pt-1 min-h-[120px]" contenteditable="true" data-placeholder="Upload up to 12 references, mixing images, videos, and audio, and use @mentions to create interactions"></div>
