@@ -65,7 +65,7 @@ MAX_IMAGES = 12
 MAX_VIDEOS = 3
 MAX_AUDIOS = 3
 MAX_TOTAL = 12
-MAX_VIDEO_DURATION = 15
+MAX_VIDEO_DURATION = 15.1
 MAX_AUDIO_DURATION = 15
 
 
@@ -159,6 +159,27 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
             log.warning(f"[Server] 未知类型 '{file_type}'，跳过: {path}")
             continue
 
+        # 单文件时长硬上限：超长视频/音频直接拒绝，不影响已有文件
+        duration_seconds = float(f.get('duration_seconds', 0))
+        # 计算当前已有该类型文件的总时长（不含本批次新文件）
+        existing_total = sum(
+            ef.get('duration_seconds', 0)
+            for ef in fm.get_all()
+            if ef.get('type') == file_type
+        )
+        if file_type == 'video' and duration_seconds > MAX_VIDEO_DURATION:
+            limit_msg = (
+                f"视频总时长不能超过 {MAX_VIDEO_DURATION} 秒"
+                f"（当前: {int(existing_total)}秒-新素材: {int(duration_seconds)}秒）"
+            )
+            continue
+        elif file_type == 'audio' and duration_seconds > MAX_AUDIO_DURATION:
+            limit_msg = (
+                f"音频总时长不能超过 {MAX_AUDIO_DURATION} 秒"
+                f"（当前: {int(existing_total)}秒-新素材: {int(duration_seconds)}秒）"
+            )
+            continue
+
         # 统计当前类型数量
         counts = {'image': 0, 'video': 0, 'audio': 0}
         for ex in fm.get_all():
@@ -198,7 +219,10 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
         fm.add(f)
 
     # 时长超限：从头部移除直到合规（纯内存操作）
-    def trim_by_duration(ftype: str, limit: int) -> Optional[str]:
+    new_files_total_video = sum(f.get('duration_seconds', 0) for f in new_files if f.get('type') == 'video')
+    new_files_total_audio = sum(f.get('duration_seconds', 0) for f in new_files if f.get('type') == 'audio')
+
+    def trim_by_duration(ftype: str, limit: int, new_total: float) -> Optional[str]:
         files = [f for f in fm.get_all() if f.get('type') == ftype]
         total = sum(f.get('duration_seconds', 0) for f in files)
         if total <= limit:
@@ -208,10 +232,14 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
             removed = files.pop(0)
             fm._files.remove(removed)
         final = sum(f.get('duration_seconds', 0) for f in fm.get_all() if f.get('type') == ftype)
-        return f"{ftype} 总时长不能超过 {limit} 秒（当前: {int(final)} 秒）"
+        type_label = '视频' if ftype == 'video' else '音频'
+        return (
+            f"{type_label}总时长不能超过 {limit} 秒"
+            f"（当前: {int(final)}秒-新素材: {int(new_total)}秒）"
+        )
 
-    video_msg = trim_by_duration('video', MAX_VIDEO_DURATION)
-    audio_msg = trim_by_duration('audio', MAX_AUDIO_DURATION)
+    video_msg = trim_by_duration('video', MAX_VIDEO_DURATION, new_files_total_video)
+    audio_msg = trim_by_duration('audio', MAX_AUDIO_DURATION, new_files_total_audio)
     limit_msg = video_msg or audio_msg or limit_msg
 
     return {

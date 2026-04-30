@@ -563,7 +563,14 @@
         async removeFile(index) {
             try {
                 const result = await httpDelete('/api/files/' + index);
-                EventBus.emit('file:removed', { index });
+                // 附带被删除文件的 identity 信息，供 editor_tag_sync 精确匹配标签
+                const removed = result.removed || {};
+                EventBus.emit('file:removed', {
+                    index: index,
+                    path: removed.path || '',
+                    name: removed.name || '',
+                    url: removed.url || ''
+                });
                 EventBus.emit('files:listUpdated', result.files || []);
                 return result;
             } catch (e) {
@@ -603,6 +610,10 @@
                         drop_pos: dropPos
                     });
                     EventBus.emit('files:listUpdated', result.files);
+                }
+                // 统一通过 files:processed 触发 Toast（限制提示走这里）
+                if (result.message) {
+                    EventBus.emit('files:processed', result);
                 }
             } catch (e) {
                 console.error('[API] 编辑区拖拽处理失败:', e);

@@ -22,6 +22,7 @@ const TabTasks = {
         type: 'AI Video',
         model: 'Dreamina Seedance 2.0 Fast',
         mode: 'first-last',
+        omniMode: 'omni',
         aspect: '16:9',
         resolution: '720P',
         duration: '10s',
@@ -37,11 +38,14 @@ const TabTasks = {
         items: []
     },
 
+    // 防抖定时器
+    _renderTimer: null,
+
     MAX_IMAGES: 12,
     MAX_VIDEOS: 3,
     MAX_AUDIOS: 3,
     MAX_TOTAL: 12,
-    MAX_VIDEO_DURATION: 15,
+    MAX_VIDEO_DURATION: 15.1,
     MAX_AUDIO_DURATION: 15,
 
     STACK_ANGLES: ['-rotate-12', 'rotate-12', '-rotate-8', 'rotate-8', '-rotate-4', 'rotate-4'],
@@ -53,6 +57,9 @@ const TabTasks = {
         this._bindEvents();
         this._subscribeEvents();
         this._syncStateToAppState();
+
+        // 根据初始模式设置比例选择器状态
+        this._updateRatioSelectorState();
 
         console.log('[tab_tasks.js] 模块初始化完成');
     },
@@ -69,10 +76,25 @@ const TabTasks = {
         try {
             const files = await window.API.getFiles();
             AppState.setUploadedFiles(files);
-            this._renderPreviews();
+            this._scheduleRender();
         } catch (e) {
             console.warn('[TabTasks] 加载文件列表失败:', e);
         }
+    },
+
+    /**
+     * 防抖渲染 - 避免快速连续操作导致多次渲染
+     */
+    _scheduleRender: function() {
+        if (this._renderTimer) {
+            clearTimeout(this._renderTimer);
+        }
+        // 使用 requestAnimationFrame + setTimeout 确保在下一帧执行
+        this._renderTimer = requestAnimationFrame(() => {
+            this._renderTimer = setTimeout(() => {
+                this._renderPreviews();
+            }, 16); // ~60fps
+        });
     },
 
     _bindEvents: function() {
@@ -112,6 +134,15 @@ const TabTasks = {
                     if (menuEl) menuEl.classList.add('hidden');
                 }
             });
+
+            // 关闭 mentionDropdown（点击按钮或菜单本身时不关闭）
+            const mentionDropdown = document.getElementById('mentionDropdown');
+            const mentionBtn = document.getElementById('mention-trigger-btn');
+            if (mentionDropdown && mentionDropdown.style.display !== 'none') {
+                if (!e.target.closest('#mention-trigger-btn') && !e.target.closest('#mentionDropdown')) {
+                    mentionDropdown.style.display = 'none';
+                }
+            }
         });
 
         // ============ Reference 预览卡片事件委托 ============
@@ -120,6 +151,7 @@ const TabTasks = {
             previewContainer.addEventListener('click', (e) => {
                 const card = e.target.closest('.preview-card');
                 if (!card) return;
+                e.stopPropagation(); // 阻止冒泡，防止触发 reference-dropzone 的打开文件对话框
                 const idx = parseInt(card.dataset.index, 10);
                 const files = AppState.uploadedFiles || [];
                 const file = files[idx];
@@ -173,11 +205,11 @@ const TabTasks = {
     },
 
     _subscribeEvents: function() {
-        // 文件列表更新
+        // 文件列表更新 - 添加防抖，避免快速连续删除导致多次渲染
         EventBus.on('files:listUpdated', (files) => {
             console.log('[TabTasks] 收到文件列表更新', files);
             AppState.setUploadedFiles(files || []);
-            this._renderPreviews();
+            this._scheduleRender();
         });
 
         // 文件处理完成
@@ -185,7 +217,10 @@ const TabTasks = {
             console.log('[TabTasks] 收到 files:processed', result);
             if (result.files) {
                 AppState.setUploadedFiles(result.files);
-                this._renderPreviews();
+                this._scheduleRender();
+            }
+            if (result.message) {
+                EventBus.emit('toast', { message: result.message });
             }
         });
 
@@ -254,6 +289,22 @@ const TabTasks = {
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
             `;
         }
+
+        // 更新菜单中各选项的选中状态
+        const menu = document.getElementById('videoDropdown');
+        if (menu) {
+            const items = menu.querySelectorAll('.video-item');
+            items.forEach(item => {
+                const isSelected = item.dataset.value === type;
+                item.classList.toggle('bg-[#2a2a2d]', isSelected);
+                item.classList.toggle('border-transparent', !isSelected);
+                const checkIcon = item.querySelector('.check-icon');
+                if (checkIcon) {
+                    checkIcon.style.display = isSelected ? 'block' : 'none';
+                }
+            });
+        }
+
         this._closeAllDropdowns();
     },
 
@@ -266,9 +317,25 @@ const TabTasks = {
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                 </svg>
-                ${model} <span class="text-[#00cae0]">&#x2716;</span>
+                ${model} <span class="text-[#00cae0]">✦</span>
             `;
         }
+
+        // 更新菜单中各选项的选中状态
+        const menu = document.getElementById('model-dropdown-menu');
+        if (menu) {
+            const items = menu.querySelectorAll('.model-item');
+            items.forEach(item => {
+                const isSelected = item.dataset.value === model;
+                item.classList.toggle('bg-[#2a2a2d]', isSelected);
+                item.classList.toggle('border-transparent', !isSelected);
+                const checkIcon = item.querySelector('.check-icon');
+                if (checkIcon) {
+                    checkIcon.style.display = isSelected ? 'block' : 'none';
+                }
+            });
+        }
+
         this._closeAllDropdowns();
         const resSection = document.getElementById('resolution-section');
         if (resSection) {
@@ -280,12 +347,46 @@ const TabTasks = {
     selectResolution: function(res, element) {
         this._state.resolution = res;
         AppState.resolution = res;
+
+        // 更新菜单中各选项的选中状态
+        const resSection = document.getElementById('resolution-section');
+        if (resSection) {
+            const items = resSection.querySelectorAll('.resolution-item');
+            items.forEach(item => {
+                const isSelected = item.dataset.value === res;
+                if (isSelected) {
+                    item.classList.add('bg-[#38383a]', 'text-gray-200', 'shadow-sm');
+                    item.classList.remove('bg-transparent', 'text-gray-400', 'hover:bg-[#323235]', 'hover:text-gray-200');
+                } else {
+                    item.classList.remove('bg-[#38383a]', 'text-gray-200', 'shadow-sm');
+                    item.classList.add('bg-transparent', 'text-gray-400', 'hover:bg-[#323235]', 'hover:text-gray-200');
+                }
+            });
+        }
+
         this._updateRatioButtonUI();
     },
 
     selectRatio: function(ratio, element) {
         this._state.aspect = ratio;
         AppState.aspect = ratio;
+
+        // 更新菜单中各选项的选中状态
+        const menu = document.getElementById('ratio-dropdown-menu');
+        if (menu) {
+            const items = menu.querySelectorAll('.ratio-item');
+            items.forEach(item => {
+                const isSelected = item.dataset.value === ratio;
+                if (isSelected) {
+                    item.classList.add('bg-[#38383a]', 'text-gray-200', 'shadow-sm');
+                    item.classList.remove('hover:bg-[#323235]', 'text-gray-400', 'hover:text-gray-200');
+                } else {
+                    item.classList.remove('bg-[#38383a]', 'text-gray-200', 'shadow-sm');
+                    item.classList.add('hover:bg-[#323235]', 'text-gray-400', 'hover:text-gray-200');
+                }
+            });
+        }
+
         this._updateRatioButtonUI();
         this._closeAllDropdowns();
     },
@@ -303,7 +404,95 @@ const TabTasks = {
                 ${duration}
             `;
         }
+
+        // 更新菜单中各选项的选中状态
+        const menu = document.getElementById('duration-dropdown-menu');
+        if (menu) {
+            const items = menu.querySelectorAll('.duration-item');
+            items.forEach(item => {
+                const isSelected = item.dataset.value === duration;
+                item.classList.toggle('bg-[#2a2a2d]', isSelected);
+                item.classList.toggle('border-transparent', isSelected);
+                const checkIcon = item.querySelector('.check-icon');
+                if (checkIcon) {
+                    checkIcon.style.display = isSelected ? 'block' : 'none';
+                }
+            });
+        }
+
         this._closeAllDropdowns();
+    },
+
+    selectOmni: function(mode, element) {
+        this._state.omniMode = mode;
+        AppState.omniMode = mode;
+        const btn = document.getElementById('omni-dropdown-btn');
+        const displayText = mode === 'omni' ? '全能参考' : '首尾帧';
+        if (btn) {
+            btn.innerHTML = `
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+                ${displayText}
+            `;
+        }
+
+        // 更新菜单中各选项的选中状态
+        const menu = document.getElementById('omni-dropdown-menu');
+        if (menu) {
+            const items = menu.querySelectorAll('.omni-item');
+            items.forEach(item => {
+                const isSelected = item.dataset.value === mode;
+                item.classList.toggle('bg-[#2a2a2d]', isSelected);
+                item.classList.toggle('border-transparent', !isSelected);
+                const checkIcon = item.querySelector('.check-icon');
+                if (checkIcon) {
+                    checkIcon.style.display = isSelected ? 'block' : 'none';
+                }
+            });
+        }
+
+        this._closeAllDropdowns();
+
+        // 首尾帧模式下禁用比例选择器
+        this._updateRatioSelectorState();
+    },
+
+    // 更新比例选择器的禁用/启用状态
+    _updateRatioSelectorState: function() {
+        const container = document.getElementById('ratio-selector-container');
+        const btn = document.getElementById('ratio-dropdown-btn');
+        const menu = document.getElementById('ratio-dropdown-menu');
+
+        if (!container || !btn || !menu) return;
+
+        const isFirstLastMode = this._state.omniMode === 'first_last';
+
+        if (isFirstLastMode) {
+            // 禁用状态
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            btn.classList.remove('hover:bg-gray-800');
+            btn.setAttribute('disabled', 'true');
+            btn.onclick = null; // 移除点击事件
+
+            // 更新按钮文字为提示信息
+            btn.innerHTML = `
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <rect x="3" y="6" width="18" height="12" rx="1.5" stroke-width="1.5"/>
+                </svg>
+                <span class="text-[10px]">根据输入图片自动适配16:9比例，暂不支持调整</span>
+            `;
+
+            // 隐藏菜单（如果有的话）
+            menu.classList.add('hidden');
+        } else {
+            // 启用状态
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            btn.classList.add('hover:bg-gray-800');
+            btn.removeAttribute('disabled');
+            btn.onclick = function() { TabTasks._toggleDropdown('ratio-dropdown-menu'); }; // 恢复点击事件
+
+            // 恢复按钮文字
+            this._updateRatioButtonUI();
+        }
     },
 
     _updateRatioButtonUI: function() {
@@ -517,6 +706,7 @@ const TabTasks = {
         const empty = document.getElementById('mentionEmpty');
         if (!dropdown || !list) return;
 
+        const isButtonTriggered = this._mentionState._isButtonTriggered;
         const searchText = this._mentionState.searchText.toLowerCase();
         const uploadedFiles = AppState.uploadedFiles || [];
 
@@ -530,7 +720,11 @@ const TabTasks = {
             if (empty) empty.classList.remove('hidden');
             dropdown.style.display = 'block';
             this._mentionState.selectedIndex = -1;
-            this._updateMentionDropdownPosition();
+            if (isButtonTriggered) {
+                this._positionDropdownAtButton();
+            } else {
+                this._updateMentionDropdownPosition();
+            }
             return;
         }
 
@@ -538,21 +732,40 @@ const TabTasks = {
 
         list.innerHTML = this._mentionState.items.map((file, idx) => {
             const type = file.type || 'file';
-            const serialNum = idx + 1;
+            const fileIndex = uploadedFiles.indexOf(file);
+            const typeCount = this._getTypeCount(type, fileIndex);
             const isSelected = idx === this._mentionState.selectedIndex;
             const thumbHtml = type === 'audio'
                 ? '<svg width="18" height="18" fill="none" stroke="rgb(0, 202, 224)" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>'
                 : '<img src="' + (file.thumbnail_base64 || file.url || '') + '" alt="">';
+            const clickHandler = isButtonTriggered
+                ? `onclick="TabTasks._selectMentionItemFixed(${idx})"`
+                : `onclick="TabTasks._selectMentionItem(${idx})"`;
             return `
-                <div class="mention-item ${isSelected ? 'selected' : ''}" data-index="${idx}" onclick="TabTasks._selectMentionItem(${idx})">
+                <div class="mention-item ${isSelected ? 'selected' : ''}" data-index="${idx}" ${clickHandler}>
                     <div class="mention-item-thumb">${thumbHtml}</div>
-                    <span class="mention-item-badge ${type}">${type.charAt(0).toUpperCase() + type.slice(1)}${serialNum}</span>
+                    <span class="mention-item-badge ${type}">${type.charAt(0).toUpperCase() + type.slice(1)}${typeCount}</span>
                 </div>
             `;
         }).join('');
 
         dropdown.style.display = 'block';
-        this._updateMentionDropdownPosition();
+        if (isButtonTriggered) {
+            this._positionDropdownAtButton();
+        } else {
+            this._updateMentionDropdownPosition();
+        }
+    },
+
+    // 按钮触发的@菜单定位到按钮下方
+    _positionDropdownAtButton: function() {
+        const dropdown = document.getElementById('mentionDropdown');
+        const btn = document.getElementById('mention-trigger-btn');
+        if (!dropdown || !btn) return;
+
+        const rect = btn.getBoundingClientRect();
+        dropdown.style.top = (rect.bottom + 4) + 'px';
+        dropdown.style.left = rect.left + 'px';
     },
 
     _hideMentionDropdown: function() {
@@ -561,6 +774,105 @@ const TabTasks = {
         this._mentionState.active = false;
         this._mentionState.searchText = '';
         this._mentionState.items = [];
+    },
+
+    _toggleMentionDropdownFixed: function() {
+        const dropdown = document.getElementById('mentionDropdown');
+        if (!dropdown) return;
+
+        if (dropdown.style.display !== 'none') {
+            dropdown.style.display = 'none';
+            return;
+        }
+
+        // 显示下拉菜单，使用按钮位置定位
+        const btn = document.getElementById('mention-trigger-btn');
+        if (btn) {
+            const rect = btn.getBoundingClientRect();
+            dropdown.style.top = (rect.bottom + 4) + 'px';
+            dropdown.style.left = rect.left + 'px';
+        }
+
+        // 重置状态，设置 startOffset 为末尾位置（和手动@一致的插入逻辑）
+        this._mentionState.active = true;
+        this._mentionState.searchText = '';
+        this._mentionState.selectedIndex = 0;
+        this._mentionState._isButtonTriggered = true;  // 标记为按钮触发
+
+        this._renderMentionDropdown();
+    },
+
+    // 按钮触发的@选择 - 直接在末尾插入
+    _selectMentionItemFixed: function(idx) {
+        if (idx < 0 || idx >= this._mentionState.items.length) return;
+
+        const file = this._mentionState.items[idx];
+        const editor = document.getElementById('dreaminaPrompt');
+        if (!editor) return;
+
+        editor.focus();
+
+        // 设置光标到编辑器末尾
+        const selection = window.getSelection();
+        const cursorRange = document.createRange();
+        cursorRange.selectNodeContents(editor);
+        cursorRange.collapse(false);
+
+        // 确保光标不在 ref-tag 内部
+        const safeRange = this._ensureCursorOutsideTags(editor, cursorRange);
+        selection.removeAllRanges();
+        selection.addRange(safeRange);
+
+        const type = file.type || 'file';
+        const index = AppState.uploadedFiles.indexOf(file);
+
+        const tag = document.createElement('span');
+        tag.className = 'ref-tag ' + type;
+        tag.contentEditable = 'false';
+        tag.dataset.index = index;
+        tag.dataset.type = type;
+        tag.dataset.path = file.path || '';
+        tag.dataset.name = file.name || '';
+        tag.dataset.url = file.url || '';
+
+        if (type === 'audio') {
+            tag.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgb(0, 202, 224)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
+        } else {
+            const thumbSrc = file.thumbnail_base64 || file.url || '';
+            if (thumbSrc) tag.innerHTML = '<img src="' + thumbSrc + '" alt="">';
+        }
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'ref-name';
+        nameSpan.textContent = type.charAt(0).toUpperCase() + type.slice(1) + this._getTypeCount(type, index);
+        tag.appendChild(nameSpan);
+
+        tag.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const idx = parseInt(tag.dataset.index);
+            const f = AppState.uploadedFiles[idx];
+            if (f) {
+                this.openViewer(f);
+            }
+        });
+
+        // 插入标签
+        const currentRange = selection.getRangeAt(0);
+        currentRange.deleteContents();
+        currentRange.insertNode(tag);
+        currentRange.setStartAfter(tag);
+        currentRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(currentRange);
+
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+
+        // 关闭下拉菜单
+        const dropdown = document.getElementById('mentionDropdown');
+        if (dropdown) dropdown.style.display = 'none';
+        this._mentionState.active = false;
+        this._mentionState._isButtonTriggered = false;
     },
 
     _selectMentionItem: function(idx) {
@@ -605,6 +917,9 @@ const TabTasks = {
         tag.contentEditable = 'false';
         tag.dataset.index = AppState.uploadedFiles.indexOf(file);
         tag.dataset.type = type;
+        tag.dataset.path = file.path || '';
+        tag.dataset.name = file.name || '';
+        tag.dataset.url = file.url || '';
 
         if (type === 'audio') {
             tag.innerHTML = '<svg width="16" height="16" fill="none" stroke="rgb(0, 202, 224)" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
@@ -615,7 +930,8 @@ const TabTasks = {
 
         const nameSpan = document.createElement('span');
         nameSpan.className = 'ref-name';
-        nameSpan.textContent = type.charAt(0).toUpperCase() + type.slice(1) + (AppState.uploadedFiles.indexOf(file) + 1);
+        const fileIndex = AppState.uploadedFiles.indexOf(file);
+        nameSpan.textContent = type.charAt(0).toUpperCase() + type.slice(1) + this._getTypeCount(type, fileIndex);
         tag.appendChild(nameSpan);
 
         tag.addEventListener('click', (e) => {
@@ -734,6 +1050,21 @@ const TabTasks = {
     // 素材预览卡片
     // ============================================================
 
+    /**
+     * 计算指定文件在其类型序列中的序号（从1开始）
+     * @param {string} type - 文件类型（image/video/audio）
+     * @param {number} fileIndex - 文件在 uploadedFiles 数组中的全局下标
+     * @returns {number} 该类型从1开始的序号
+     */
+    _getTypeCount: function(type, fileIndex) {
+        const files = AppState.uploadedFiles || [];
+        let count = 0;
+        for (let i = 0; i <= fileIndex; i++) {
+            if ((files[i] || {}).type === type) count++;
+        }
+        return count;
+    },
+
     _renderPreviews: function() {
         const container = document.getElementById('reference-preview-container');
         if (!container) return;
@@ -752,7 +1083,8 @@ const TabTasks = {
             return;
         }
 
-        container.innerHTML = '';
+        // 使用 DocumentFragment 批量构建 DOM，减少 reflow
+        const fragment = document.createDocumentFragment();
         const totalCount = uploadedFiles.length;
 
         let imgCount = 0, vidCount = 0, audCount = 0;
@@ -798,29 +1130,32 @@ const TabTasks = {
                         '</div>';
                 }
 
-                let cardHtml = '<div class="preview-card group absolute inset-0 ' + bgClass + ' rounded-lg border-2 border-white shadow-lg transform ' + angleClass + ' cursor-pointer" ' +
-                    'style="z-index: ' + zIndex + '; --expand-x: ' + expandX + 'px; --expand-rot: ' + expandRot + ';" ' +
-                    'data-index="' + index + '">' +
+                // 使用 template 解析 HTML，减少字符串拼接
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'preview-card group absolute inset-0 ' + bgClass + ' rounded-lg border-2 border-white shadow-lg transform ' + angleClass + ' cursor-pointer';
+                cardDiv.style.cssText = 'z-index: ' + zIndex + '; --expand-x: ' + expandX + 'px; --expand-rot: ' + expandRot + ';';
+                cardDiv.dataset.index = index;
 
-                    '<div class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-[#2a2a2d] border border-[#3c3c3e] text-gray-200 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg pointer-events-none z-50">' +
-                    typeLabel + '</div>' +
+                cardDiv.innerHTML = `
+                    <div class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-[#2a2a2d] border border-[#3c3c3e] text-gray-200 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg pointer-events-none z-50">
+                        ${typeLabel}
+                    </div>
+                    <div class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#1c1c1e] border border-gray-500 rounded-full flex items-center justify-center text-gray-300 opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all z-50 cursor-pointer" onclick="event.stopPropagation(); TabTasks._removeFile(${index});" title="Remove">
+                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </div>
+                    ${cardContent}
+                    ${isTopCard && totalCount < this.MAX_TOTAL ? `
+                    <div class="absolute -bottom-2 -right-2 w-7 h-7 bg-[#38383a] border-[3px] border-[#1c1c1e] rounded-full flex items-center justify-center text-white shadow-xl hover:bg-[#48484a] transition-colors cursor-pointer z-50" onclick="event.stopPropagation(); TabTasks._openFileDialog();" title="Add more">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                    </div>` : ''}
+                `;
 
-                    '<div onclick="event.stopPropagation(); TabTasks._removeFile(' + index + ');" ' +
-                    'class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#1c1c1e] border border-gray-500 rounded-full flex items-center justify-center text-gray-300 opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all z-50 cursor-pointer" title="Remove">' +
-                    '<svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>' +
-                    '</div>' +
-
-                    cardContent +
-
-                    (isTopCard && totalCount < this.MAX_TOTAL ?
-                    '<div onclick="event.stopPropagation(); TabTasks._openFileDialog();" ' +
-                    'class="absolute -bottom-2 -right-2 w-7 h-7 bg-[#38383a] border-[3px] border-[#1c1c1e] rounded-full flex items-center justify-center text-white shadow-xl hover:bg-[#48484a] transition-colors cursor-pointer z-50" title="Add more">' +
-                    '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>' +
-                    '</div>' : '') +
-                    '</div>';
-
-                container.insertAdjacentHTML('beforeend', cardHtml);
+                fragment.appendChild(cardDiv);
             });
+
+            // 一次性替换容器内容
+            container.innerHTML = '';
+            container.appendChild(fragment);
         } catch (err) {
             console.error('[TabTasks] 渲染卡片失败:', err);
         }
@@ -834,17 +1169,18 @@ const TabTasks = {
     },
 
     _removeFile: async function(index) {
-        console.log('[TabTasks] 请求删除文件: index=', index);
-        const uploadedFiles = window.AppState ? window.AppState.uploadedFiles : [];
-        const deletedFileInfo = uploadedFiles[index] || { index: index };
+        // 防抖：防止快速连续点击删除按钮
+        if (this._removing) return;
+        this._removing = true;
 
+        console.log('[TabTasks] 请求删除文件: index=', index);
         try {
             await window.API.removeFile(index);
-            if (window.EventBus) {
-                window.EventBus.emit('file:removed', deletedFileInfo);
-            }
         } catch (err) {
             console.error('[TabTasks] 删除文件失败:', err);
+        } finally {
+            // 延迟重置标志，允许下一次删除
+            setTimeout(() => { this._removing = false; }, 300);
         }
     },
 
@@ -1032,21 +1368,15 @@ const TabTasks = {
             tag.dataset.url = file.url || '';
 
             if (type === 'audio') {
-                tag.innerHTML = '<svg width="16" height="16" fill="none" stroke="rgb(0, 202, 224)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
+                tag.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgb(0, 202, 224)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
             } else {
                 const thumbSrc = file.thumbnail_base64 || file.url || '';
                 if (thumbSrc) tag.innerHTML = '<img src="' + thumbSrc + '" alt="">';
             }
 
-            let typeCount = 1;
-            for (let j = 0; j < uploadedFiles.length; j++) {
-                if (j >= index) break;
-                if (uploadedFiles[j].type === type) typeCount++;
-            }
-
             const nameSpan = document.createElement('span');
             nameSpan.className = 'ref-name';
-            nameSpan.textContent = type.charAt(0).toUpperCase() + type.slice(1) + typeCount;
+            nameSpan.textContent = type.charAt(0).toUpperCase() + type.slice(1) + this._getTypeCount(type, index);
             tag.appendChild(nameSpan);
 
             tag.addEventListener('click', (e) => {
@@ -1082,11 +1412,13 @@ window.selectVideo = function(type, el) { TabTasks.selectVideo(type, el); };
 window.toggleModelDropdown = function() { TabTasks._toggleDropdown('model-dropdown-menu'); };
 window.selectModel = function(model, el) { TabTasks.selectModel(model, el); };
 window.toggleOmniDropdown = function() { TabTasks._toggleDropdown('omni-dropdown-menu'); };
+window.selectOmni = function(mode, el) { TabTasks.selectOmni(mode, el); };
 window.toggleRatioDropdown = function() { TabTasks._toggleDropdown('ratio-dropdown-menu'); };
 window.selectRatio = function(ratio, el) { TabTasks.selectRatio(ratio, el); };
 window.selectResolution = function(res, el) { TabTasks.selectResolution(res, el); };
 window.toggleDurationDropdown = function() { TabTasks._toggleDropdown('duration-dropdown-menu'); };
 window.selectDuration = function(duration, el) { TabTasks.selectDuration(duration, el); };
+window.toggleMentionDropdownFixed = function() { TabTasks._toggleMentionDropdownFixed(); };
 window.selectMentionItem = function(idx) { TabTasks._selectMentionItem(idx); };
 window.removeFile = function(idx) { TabTasks._removeFile(idx); };
 window.openViewer = function(file) { TabTasks.openViewer(file); };

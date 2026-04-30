@@ -15,6 +15,7 @@ const AppState = {
     type: 'AI Video',
     model: 'Dreamina Seedance 2.0 Fast',
     mode: 'first-last',
+    omniMode: 'omni',  // omni / first_last
     aspect: '16:9',
     resolution: '720P',
     duration: '10s',

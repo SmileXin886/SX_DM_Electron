@@ -340,12 +340,14 @@ app.whenReady().then(() => {
     logger.info('  PYTHON_EXE: ' + PYTHON_EXE);
     logger.info('=================================================');
 
-    // 注册自定义安全协议，替代裸 file:// 访问
-    // request.url 格式: "app-media://local/D:/videos/test.mp4"
-    protocol.handle('app-media', (request) => {
+    // 废弃 net.fetch，改用底层原生支持 206 Partial Content 流媒体和大文件分段读取的 registerFileProtocol
+    protocol.registerFileProtocol('app-media', (request, callback) => {
+        // request.url 类似 "app-media://local/D:/videos/test.mp4"
         let filePath = request.url.replace('app-media://local/', '');
         filePath = decodeURIComponent(filePath);
-        return net.fetch(pathToFileURL(filePath).href);
+
+        // 直接将物理路径交给 Chromium 底层文件栈，完美支持 <video> 和 <audio> 的 Range 请求
+        callback({ path: filePath });
     });
 
     createMenu();
