@@ -513,6 +513,20 @@ const TabTasks = {
             // 显示首尾帧上传器
             if (frameUploaderContainer) {
                 frameUploaderContainer.classList.remove('hidden');
+
+                // 从 AppState 恢复首尾帧数据（如果有的话）
+                if (this._frameUploader && AppState.frameFiles) {
+                    this._frameUploader.frames = {
+                        first: AppState.frameFiles.first || null,
+                        last: AppState.frameFiles.last || null
+                    };
+                    this._frameUploader.previewUrls = {
+                        first: AppState.framePreviewUrls.first || null,
+                        last: AppState.framePreviewUrls.last || null
+                    };
+                    this._frameUploader.updateCardUI('first');
+                    this._frameUploader.updateCardUI('last');
+                }
             }
         } else {
             // 启用状态
@@ -524,13 +538,10 @@ const TabTasks = {
             // 恢复按钮文字
             this._updateRatioButtonUI();
 
-            // 隐藏首尾帧上传器
+            // 隐藏首尾帧上传器（不清空数据，只隐藏，让 AppState 保留状态）
             if (frameUploaderContainer) {
                 frameUploaderContainer.classList.add('hidden');
-                // 重置上传器状态
-                if (this._frameUploader) {
-                    this._frameUploader.reset();
-                }
+                // 注意：不要调用 reset()，否则会清空 AppState 中的首尾帧数据
             }
         }
     },

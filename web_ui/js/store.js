@@ -27,6 +27,29 @@ const AppState = {
     presets: [],
     uploadedFiles: [],  // 已上传素材列表
 
+    // ===== 首尾帧专属存储区 =====
+    frameFiles: { first: null, last: null },
+    framePreviewUrls: { first: null, last: null },
+
+    // 首尾帧专属方法
+    setFrameFile: function(type, filePath, previewUrl) {
+        this.frameFiles[type] = filePath;
+        this.framePreviewUrls[type] = previewUrl;
+    },
+    swapFrames: function() {
+        const tempFile = this.frameFiles.first;
+        this.frameFiles.first = this.frameFiles.last;
+        this.frameFiles.last = tempFile;
+
+        const tempUrl = this.framePreviewUrls.first;
+        this.framePreviewUrls.first = this.framePreviewUrls.last;
+        this.framePreviewUrls.last = tempUrl;
+    },
+    clearFrames: function() {
+        this.frameFiles = { first: null, last: null };
+        this.framePreviewUrls = { first: null, last: null };
+    },
+
     // ===== 工具方法 =====
 
     /**
@@ -117,6 +140,7 @@ const AppState = {
         this.pendingTasks.clear();
         this.presets = [];
         this.uploadedFiles = [];
+        this.clearFrames();
     }
 };
 
