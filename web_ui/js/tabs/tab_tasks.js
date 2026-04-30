@@ -475,7 +475,7 @@ const TabTasks = {
         this._updateRatioSelectorState();
     },
 
-    // 更新比例选择器的禁用/启用状态
+        // 更新比例选择器的禁用/启用状态
     _updateRatioSelectorState: function() {
         const container = document.getElementById('ratio-selector-container');
         const btn = document.getElementById('ratio-dropdown-btn');
@@ -492,6 +492,33 @@ const TabTasks = {
             refDropzone.classList.toggle('hidden', isFirstLastMode);
         }
 
+        // 【新增】首尾帧模式下隐藏 @ 素材提及按钮
+        const mentionBtn = document.getElementById('mention-trigger-btn');
+        if (mentionBtn) {
+            mentionBtn.classList.toggle('hidden', isFirstLastMode);
+        }
+
+        // 【新增】首尾帧模式下更新 prompt placeholder 并禁用 @ 提及
+        const promptInput = document.getElementById('dreaminaPrompt');
+        if (promptInput) {
+            if (isFirstLastMode) {
+                promptInput.dataset.placeholder = '请输入提示词描述视频内容...';
+                promptInput.dataset.disableMention = 'true';
+            } else {
+                promptInput.dataset.placeholder = 'Upload up to 12 references, mixing images, videos, and audio, and use @mentions to create interactions';
+                promptInput.dataset.disableMention = 'false';
+            }
+        }
+
+        // 【新增】首尾帧模式下隐藏 prompt 编辑区中的素材引用标签
+        const promptEditor = document.getElementById('dreaminaPrompt');
+        if (promptEditor) {
+            const refTags = promptEditor.querySelectorAll('.ref-tag');
+            refTags.forEach(tag => {
+                tag.style.display = isFirstLastMode ? 'none' : '';
+            });
+        }
+
         if (isFirstLastMode) {
             // 禁用状态
             btn.classList.add('opacity-50', 'cursor-not-allowed');
@@ -504,7 +531,7 @@ const TabTasks = {
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <rect x="3" y="6" width="18" height="12" rx="1.5" stroke-width="1.5"/>
                 </svg>
-                <span class="text-[10px]">根据输入图片自动适配16:9比例，暂不支持调整</span>
+                <span class="text-[10px]">根据输入图片自动适配比例，暂不支持调整</span>
             `;
 
             // 隐藏菜单（如果有的话）
@@ -549,6 +576,12 @@ const TabTasks = {
     _updateRatioButtonUI: function() {
         const btnEl = document.getElementById('ratio-dropdown-btn');
         if (!btnEl) return;
+
+        // 【新增】首尾帧模式下保持特殊文字，不更新为比例数值
+        if (this._state.omniMode === 'first_last') {
+            return;
+        }
+
         const isStandardModel = this._state.model === 'Dreamina Seedance 2.0';
         let btnText = this._state.aspect;
         if (isStandardModel) btnText += '  ' + this._state.resolution;
@@ -567,6 +600,12 @@ const TabTasks = {
     _onPromptInput: function(e) {
         this._state.prompt = e.target.textContent;
         AppState.prompt = e.target.textContent;
+
+        // 【新增】首尾帧模式下直接隐藏提及下拉菜单并返回，不处理 @
+        if (this._state.omniMode === 'first_last') {
+            this._hideMentionDropdown();
+            return;
+        }
 
         const selection = window.getSelection();
         if (!selection.rangeCount) { this._hideMentionDropdown(); return; }
@@ -672,6 +711,11 @@ const TabTasks = {
     },
 
     _onPromptDragover: function(e) {
+        // 【新增】首尾帧模式下禁止拖拽
+        if (this._state.omniMode === 'first_last') {
+            e.dataTransfer.dropEffect = 'none';
+            return;
+        }
         e.preventDefault();
         e.stopPropagation();
         const elementUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
@@ -683,6 +727,12 @@ const TabTasks = {
     },
 
     _onPromptDrop: function(e) {
+        // 【新增】首尾帧模式下禁止拖放文件
+        if (this._state.omniMode === 'first_last') {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
         e.preventDefault();
         e.stopPropagation();
         const files = e.dataTransfer?.files;
@@ -828,6 +878,11 @@ const TabTasks = {
     },
 
     _toggleMentionDropdownFixed: function() {
+        // 【新增】首尾帧模式下不允许显示 @ 提及下拉菜单
+        if (this._state.omniMode === 'first_last') {
+            return;
+        }
+
         const dropdown = document.getElementById('mentionDropdown');
         if (!dropdown) return;
 
