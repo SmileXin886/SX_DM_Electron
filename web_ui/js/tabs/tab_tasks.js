@@ -447,9 +447,15 @@ const TabTasks = {
         AppState.omniMode = mode;
         const btn = document.getElementById('omni-dropdown-btn');
         const displayText = mode === 'omni' ? '全能参考' : '首尾帧';
+
+        // 首尾帧模式使用矩形图标（和比例选择器一致），全能参考模式使用原来的图标
+        const iconSvg = mode === 'first_last'
+            ? '<svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" stroke-width="1.5"/><path d="M8 12h8M12 8v8" stroke-width="1.5" stroke-linecap="round"/></svg>'
+            : '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>';
+
         if (btn) {
             btn.innerHTML = `
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+                ${iconSvg}
                 ${displayText}
             `;
         }
@@ -505,7 +511,7 @@ const TabTasks = {
                 promptInput.dataset.placeholder = '请输入提示词描述视频内容...';
                 promptInput.dataset.disableMention = 'true';
             } else {
-                promptInput.dataset.placeholder = 'Upload up to 12 references, mixing images, videos, and audio, and use @mentions to create interactions';
+                promptInput.dataset.placeholder = '上传最多12个参考素材、输入文字或参考内容，自由组合图、文、音、视频多元素，定义精彩互动。例如:@图片1模仿@视频1的动作，音色参考@音频1。';
                 promptInput.dataset.disableMention = 'false';
             }
         }
