@@ -1,0 +1,46 @@
+/* 注册模式 - 布局与通用 */
+.reg-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) 360px;
+    gap: 20px;
+    align-items: start;
+}
+.reg-left {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.reg-right {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+}
+.reg-card {
+    background: rgba(32, 33, 39, 0.85);
+    backdrop-filter: blur(20px);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.reg-card-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #8b949e;
+    margin-bottom: 16px;
+}
+.reg-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.reg-hidden { display: none !important; }
+@media (max-width: 900px) {
+    .reg-layout { grid-template-columns: 1fr; }
+    .reg-right { position: static; }
+    .reg-pill-group { grid-template-columns: 1fr; }
+    .reg-grid-2 { grid-template-columns: 1fr; }
+}

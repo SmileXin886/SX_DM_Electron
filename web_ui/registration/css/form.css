@@ -1,0 +1,47 @@
+/* 注册模式 - 表单元素 */
+.reg-field { margin-bottom: 14px; }
+.reg-field:last-child { margin-bottom: 0; }
+.reg-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: #6e7681;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.reg-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: #c9d1d9;
+    font-size: 13px;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+.reg-input:focus {
+    outline: none;
+    border-color: rgb(0, 202, 224);
+    background: rgba(0, 202, 224, 0.04);
+}
+.reg-input::placeholder { color: #4a4a4a; }
+.reg-select {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: #c9d1d9;
+    font-size: 13px;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23e0f5ff' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+.reg-select:hover { border-color: rgba(255, 255, 255, 0.2); }
+.reg-select:focus { outline: none; border-color: rgb(0, 202, 224); }

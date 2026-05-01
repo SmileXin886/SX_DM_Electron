@@ -1,0 +1,76 @@
+/* 注册模式 - 按钮与日志 */
+.reg-submit-btn {
+    width: 100%;
+    background: linear-gradient(135deg, rgb(0, 202, 224) 0%, rgb(0, 180, 200) 100%);
+    border: none;
+    border-radius: 12px;
+    padding: 14px 24px;
+    color: rgb(15, 15, 18);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 16px rgba(0, 202, 224, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 14px;
+}
+.reg-submit-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(0, 202, 224, 0.35);
+}
+.reg-submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+.reg-alert {
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 12px;
+    margin-bottom: 14px;
+    line-height: 1.5;
+}
+.reg-alert.warning { background: rgba(240, 180, 41, 0.1); border: 1px solid rgba(240, 180, 41, 0.25); color: #f0b429; }
+.reg-alert.error { background: rgba(248, 81, 73, 0.1); border: 1px solid rgba(248, 81, 73, 0.25); color: #f85149; }
+.reg-alert.info { background: rgba(0, 202, 224, 0.08); border: 1px solid rgba(0, 202, 224, 0.2); color: rgb(0, 202, 224); }
+.reg-log-panel {
+    background: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 10px;
+    padding: 12px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 11px;
+    height: 240px;
+    overflow-y: auto;
+    max-height: 360px;
+}
+.reg-log-line { margin-bottom: 3px; line-height: 1.6; word-break: break-all; }
+.reg-log-info { color: #8b949e; }
+.reg-log-success { color: #3fb950; }
+.reg-log-warning { color: #f0b429; }
+.reg-log-error { color: #f85149; }
+.reg-log-debug { color: #6e7681; }
+.reg-task-id {
+    font-family: 'Consolas', monospace;
+    font-size: 10px;
+    color: #6e7681;
+    word-break: break-all;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 6px 10px;
+    border-radius: 8px;
+    margin-top: 10px;
+}
+@keyframes reg-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.reg-skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+    background-size: 200% 100%;
+    animation: reg-shimmer 1.5s infinite;
+    border-radius: 8px;
+}

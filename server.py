@@ -72,6 +72,8 @@ MAX_AUDIO_DURATION = 15
 # ============================================================
 # 文件管理器（单例，纯内存，无持久化）
 # 服务重启后文件列表自动清空，每次都是全新会话
+# 【多租户改造 v2】session 结构升级为组合字典：
+#   task_id → {"reference_files": [], "frame_files": {"first": None, "last": None}}
 # ============================================================
 
 class FileManager:
@@ -87,37 +89,98 @@ class FileManager:
         return cls._instance
 
     def _reset(self):
-        self._files: List[Dict[str, Any]] = []
+        # 【多租户改造 v2】每个 session: {reference_files: [], frame_files: {first: None, last: None}}
+        self._sessions: Dict[str, Dict[str, Any]] = {}
         self._lock = threading.Lock()
 
-    def get_all(self) -> List[Dict[str, Any]]:
-        with self._lock:
-            return list(self._files)
+    def _ensure_session(self, task_id: str) -> Dict[str, Any]:
+        """确保指定 task_id 的 session 存在，不存在则初始化完整结构"""
+        if task_id not in self._sessions:
+            self._sessions[task_id] = {
+                "reference_files": [],
+                "frame_files": {"first": None, "last": None}
+            }
+        return self._sessions[task_id]
 
-    def get_by_index(self, index: int) -> Optional[Dict[str, Any]]:
+    # ===== 参考素材（reference_files）操作 =====
+
+    def get_all(self, task_id: str = "default") -> List[Dict[str, Any]]:
         with self._lock:
-            if 0 <= index < len(self._files):
-                return self._files[index]
+            return list(self._ensure_session(task_id).get("reference_files", []))
+
+    def get_by_index(self, task_id: str, index: int) -> Optional[Dict[str, Any]]:
+        with self._lock:
+            session = self._ensure_session(task_id)
+            files = session.get("reference_files", [])
+            if 0 <= index < len(files):
+                return files[index]
             return None
 
-    def remove(self, index: int) -> Optional[Dict[str, Any]]:
+    def remove(self, task_id: str, index: int) -> Optional[Dict[str, Any]]:
         with self._lock:
-            if 0 <= index < len(self._files):
-                return self._files.pop(index)
+            session = self._ensure_session(task_id)
+            files = session.setdefault("reference_files", [])
+            if 0 <= index < len(files):
+                return files.pop(index)
             return None
 
-    def add(self, file_info: Dict[str, Any]):
+    def add(self, task_id: str, file_info: Dict[str, Any]):
         with self._lock:
-            self._files.append(file_info)
+            session = self._ensure_session(task_id)
+            session.setdefault("reference_files", []).append(file_info)
 
-    def count(self) -> int:
+    def count(self, task_id: str = "default") -> int:
         with self._lock:
-            return len(self._files)
+            return len(self._ensure_session(task_id).get("reference_files", []))
 
-    def clear(self):
-        """清空文件列表"""
+    def clear(self, task_id: str = None):
+        """清空指定 task_id 或全部 session"""
         with self._lock:
-            self._files.clear()
+            if task_id:
+                self._sessions.pop(task_id, None)
+            else:
+                self._sessions.clear()
+
+    # ===== 首尾帧（frame_files）操作 =====
+
+    def set_frame(self, task_id: str, frame_type: str, file_info: Dict[str, Any]):
+        """
+        设置指定 task_id 的首帧或尾帧。
+        frame_type: 'first' 或 'last'
+        file_info: 包含 path、name、url、thumbnail_base64 等字段的字典
+        """
+        with self._lock:
+            session = self._ensure_session(task_id)
+            session.setdefault("frame_files", {"first": None, "last": None})[frame_type] = file_info
+
+    def get_frames(self, task_id: str = "default") -> Dict[str, Any]:
+        """返回指定 task_id 的首尾帧字典 {first: {...}|None, last: {...}|None}"""
+        with self._lock:
+            session = self._ensure_session(task_id)
+            return dict(session.get("frame_files", {"first": None, "last": None}))
+
+    def clear_frames(self, task_id: str = None):
+        """清空指定 task_id 的首尾帧"""
+        with self._lock:
+            if task_id and task_id in self._sessions:
+                self._sessions[task_id]["frame_files"] = {"first": None, "last": None}
+            elif not task_id:
+                for sid in self._sessions:
+                    self._sessions[sid]["frame_files"] = {"first": None, "last": None}
+
+    # ===== 统计属性 =====
+
+    @property
+    def session_count(self) -> int:
+        """返回当前活跃 session 数量"""
+        with self._lock:
+            return len(self._sessions)
+
+    @property
+    def reference_count(self, task_id: str = "default") -> int:
+        """返回指定 session 的参考素材数量"""
+        with self._lock:
+            return len(self._ensure_session(task_id).get("reference_files", []))
 
 
 def get_file_manager() -> FileManager:
@@ -126,9 +189,10 @@ def get_file_manager() -> FileManager:
 
 # ============================================================
 # 轻量级文件校验逻辑（同步，纯内存）
+# 【多租户改造】所有方法接收 task_id 参数，实现 session 隔离
 # ============================================================
 
-def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_editor: bool = False) -> dict:
+def _validate_and_add_files(fm: FileManager, task_id: str, incoming_files: List[dict], for_editor: bool = False) -> dict:
     """
     校验并追加文件：
     1. 去重（按 path）
@@ -136,11 +200,12 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
     3. 类型数量限制（MAX_VIDEOS = 3 / MAX_AUDIOS = 3）
     4. 时长限制（视频/音频总时长各 <= 15s），超时从头部移除
     5. for_editor=True 时，给新文件附加 insert_index 供编辑区标签同步
+    6. 【多租户】所有操作针对特定 task_id 的 session
     """
-    existing_paths = {f['path'] for f in fm.get_all()}
+    existing_paths = {f['path'] for f in fm.get_all(task_id)}
     new_files: List[Dict[str, Any]] = []
     limit_msg = None
-    base_index = len(fm.get_all())
+    base_index = len(fm.get_all(task_id))
 
     for idx, f in enumerate(incoming_files):
         path = f.get('path', '')
@@ -150,7 +215,7 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
             log.info(f"[Server] 跳过（空/重复）: {path}")
             continue
 
-        total = len(fm.get_all()) + len(new_files)
+        total = len(fm.get_all(task_id)) + len(new_files)
         if total >= MAX_TOTAL:
             limit_msg = f"文件总数已达上限 ({MAX_TOTAL} 个)"
             break
@@ -164,7 +229,7 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
         # 计算当前已有该类型文件的总时长（不含本批次新文件）
         existing_total = sum(
             ef.get('duration_seconds', 0)
-            for ef in fm.get_all()
+            for ef in fm.get_all(task_id)
             if ef.get('type') == file_type
         )
         if file_type == 'video' and duration_seconds > MAX_VIDEO_DURATION:
@@ -182,7 +247,7 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
 
         # 统计当前类型数量
         counts = {'image': 0, 'video': 0, 'audio': 0}
-        for ex in fm.get_all():
+        for ex in fm.get_all(task_id):
             ct = ex.get('type', 'unknown')
             if ct in counts:
                 counts[ct] += 1
@@ -216,22 +281,28 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
 
     # 追加到内存列表
     for f in new_files:
-        fm.add(f)
+        fm.add(task_id, f)
 
     # 时长超限：从头部移除直到合规（纯内存操作）
     new_files_total_video = sum(f.get('duration_seconds', 0) for f in new_files if f.get('type') == 'video')
     new_files_total_audio = sum(f.get('duration_seconds', 0) for f in new_files if f.get('type') == 'audio')
 
     def trim_by_duration(ftype: str, limit: int, new_total: float) -> Optional[str]:
-        files = [f for f in fm.get_all() if f.get('type') == ftype]
+        files = [f for f in fm.get_all(task_id) if f.get('type') == ftype]
         total = sum(f.get('duration_seconds', 0) for f in files)
         if total <= limit:
             return None
         log.info(f"[Server] {ftype} 总时长超限 ({total}s>{limit}s)，自动裁剪")
         while files and sum(f.get('duration_seconds', 0) for f in files) > limit:
             removed = files.pop(0)
-            fm._files.remove(removed)
-        final = sum(f.get('duration_seconds', 0) for f in fm.get_all() if f.get('type') == ftype)
+            # 直接操作 session 的 reference_files 列表（通过 path 移除）
+            session = fm._sessions.get(task_id, {})
+            ref_files = session.get("reference_files", [])
+            for i, sf in enumerate(ref_files):
+                if sf['path'] == removed['path']:
+                    ref_files.pop(i)
+                    break
+        final = sum(f.get('duration_seconds', 0) for f in fm.get_all(task_id) if f.get('type') == ftype)
         type_label = '视频' if ftype == 'video' else '音频'
         return (
             f"{type_label}总时长不能超过 {limit} 秒"
@@ -244,7 +315,7 @@ def _validate_and_add_files(fm: FileManager, incoming_files: List[dict], for_edi
 
     return {
         "success": True,
-        "files": fm.get_all(),
+        "files": fm.get_all(task_id),
         "new_count": len(new_files),
         **({"message": limit_msg} if limit_msg else {}),
     }
@@ -331,6 +402,7 @@ app.add_middleware(
 @app.get("/", tags=["health"])
 async def root():
     pm = get_preset_manager()
+    fm = get_file_manager()
     return JSONResponse({
         "service": "Dreamina Toolkit",
         "version": "3.0.0",
@@ -338,7 +410,8 @@ async def root():
         "gateway_enabled": GATEWAY_ENABLED,
         "connections": manager.connection_count,
         "presets_count": pm.count(),
-        "files_count": get_file_manager().count(),
+        "sessions_count": fm.session_count,  # 【多租户】显示活跃 session 数量
+        "files_count": sum(fm.count(sid) for sid in fm._sessions),  # 【多租户】所有 session 的文件总数
         "timestamp": datetime.now().isoformat(),
     })
 
@@ -346,12 +419,13 @@ async def root():
 @app.get("/health", tags=["health"])
 async def health():
     pm = get_preset_manager()
+    fm = get_file_manager()
     return JSONResponse({
         "status": "ok",
         "websocket_connections": manager.connection_count,
         "gateway_enabled": GATEWAY_ENABLED,
         "presets": {"count": pm.count(), "summary": pm.get_summary()},
-        "files": {"count": get_file_manager().count()},
+        "files": {"sessions": fm.session_count, "total_count": sum(fm.count(sid) for sid in fm._sessions)},
     })
 
 
@@ -393,45 +467,120 @@ async def gateway_status():
 
 # ============================================================
 # HTTP API：文件管理
+# 【多租户改造】所有接口接收 task_id 参数，实现 session 隔离
 # ============================================================
 
 @app.post("/api/files/process", tags=["files"])
 async def process_files(request: dict):
     """
     轻量级文件校验器
-    请求体：{ "files": [{ type, path, name, url, duration, duration_seconds, thumbnail_base64 }, ...] }
+    请求体：{ "task_id": "xxx", "files": [{ type, path, name, url, duration, duration_seconds, thumbnail_base64 }, ...], "for_editor": bool }
     响应：{ "success": true, "files": [...], "new_count": n, "message": "..."(可选) }
     """
     incoming_files = request.get("files", [])
     if not incoming_files:
         return JSONResponse({"success": False, "error": "未提供文件列表"})
+    # 【多租户】从请求体解析 task_id，默认 "default"
+    task_id = request.get("task_id", "default")
     fm = get_file_manager()
-    result = _validate_and_add_files(fm, incoming_files, request.get("for_editor", False))
+    result = _validate_and_add_files(fm, task_id, incoming_files, request.get("for_editor", False))
     return JSONResponse(result)
 
 
 @app.get("/api/files", tags=["files"])
-async def get_files():
-    """获取当前文件列表"""
+async def get_files(task_id: str = "default"):
+    """获取指定 task_id 的文件列表"""
     fm = get_file_manager()
     return JSONResponse({
         "success": True,
-        "files": fm.get_all(),
-        "count": fm.count(),
+        "files": fm.get_all(task_id),
+        "count": fm.count(task_id),
+        "task_id": task_id,
     })
 
 
 @app.delete("/api/files/{index}", tags=["files"])
-async def delete_file(index: int):
-    """删除指定索引的文件"""
+async def delete_file(index: int, task_id: str = "default"):
+    """删除指定 task_id 中指定索引的文件"""
     fm = get_file_manager()
-    removed = fm.remove(index)
+    removed = fm.remove(task_id, index)
     if removed is None:
-        raise HTTPException(status_code=404, detail=f"索引 {index} 超出范围")
+        raise HTTPException(status_code=404, detail=f"索引 {index} 超出范围 (task_id={task_id})")
     return JSONResponse({
         "success": True,
         "removed": removed,
-        "files": fm.get_all(),
+        "files": fm.get_all(task_id),
+        "task_id": task_id,
+    })
+
+
+# ============================================================
+# HTTP API：首尾帧管理
+# 【多租户改造 v2】首尾帧纳入 task_id 隔离体系
+# 首尾帧不参与 MAX_TOTAL / 时长熔断校验，仅覆盖更新对应 frame_type 字段
+# ============================================================
+
+@app.post("/api/frames/process", tags=["frames"])
+async def process_frame(request: dict):
+    """
+    同步首尾帧到后端（多租户 task_id 隔离）
+    请求体：{ "task_id": "xxx", "frame_type": "first"|"last", "file_path": "...", "name": "...", "thumbnail_base64": "..." }
+    响应：{ "success": true, "file_info": {...}, "frames": { "first": {...}|null, "last": {...}|null } }
+    """
+    task_id = request.get("task_id", "default")
+    frame_type = request.get("frame_type", "first")
+    file_path = request.get("file_path", "")
+
+    if not file_path:
+        return JSONResponse({"success": False, "error": "file_path 不能为空"})
+    if frame_type not in ("first", "last"):
+        return JSONResponse({"success": False, "error": "frame_type 必须是 'first' 或 'last'"})
+
+    # 构建 file_info（不校验时长和数量限制，直接覆盖）
+    file_info = {
+        "type": "image",
+        "path": file_path,
+        "name": request.get("name", os.path.basename(file_path)),
+        "url": "app-media://local/" + file_path.replace("\\", "/"),
+        "thumbnail_base64": request.get("thumbnail_base64", ""),
+        "duration": "00:00",
+        "duration_seconds": 0,
+    }
+
+    fm = get_file_manager()
+    fm.set_frame(task_id, frame_type, file_info)
+
+    return JSONResponse({
+        "success": True,
+        "file_info": file_info,
+        "frames": fm.get_frames(task_id),
+    })
+
+
+@app.get("/api/frames", tags=["frames"])
+async def get_frames(task_id: str = "default"):
+    """
+    获取指定 task_id 的首尾帧（多租户隔离）
+    """
+    fm = get_file_manager()
+    return JSONResponse({
+        "success": True,
+        "task_id": task_id,
+        "frames": fm.get_frames(task_id),
+    })
+
+
+@app.delete("/api/frames", tags=["frames"])
+async def clear_frames(task_id: str = "default"):
+    """
+    清空指定 task_id 的首尾帧（多租户隔离）
+    """
+    fm = get_file_manager()
+    fm.clear_frames(task_id)
+    return JSONResponse({
+        "success": True,
+        "task_id": task_id,
+        "frames": {"first": None, "last": None},
     })
 
 

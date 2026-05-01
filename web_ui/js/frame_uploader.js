@@ -146,6 +146,13 @@ class FrameUploader {
             window.AppState.setFrameFile(type, filePath, previewUrl);
         }
 
+        // 【多租户改造 v2】：同步到后端 task_id 沙箱
+        if (typeof window.API !== 'undefined') {
+            window.API.processFrameFile(type, filePath, filePath.split(/[\\/]/).pop()).catch(err => {
+                console.error('[FrameUploader] 同步首尾帧到后端失败:', err);
+            });
+        }
+
         this.updateCardUI(type);
 
         if (typeof EventBus !== 'undefined') {
@@ -185,6 +192,16 @@ class FrameUploader {
             window.AppState.swapFrames();
         }
 
+        // 【多租户改造 v2】：互换后同步到后端
+        if (typeof window.API !== 'undefined') {
+            Promise.all([
+                this.frames.first ? window.API.processFrameFile('first', this.frames.first, this.frames.first.split(/[\\/]/).pop()) : Promise.resolve(),
+                this.frames.last ? window.API.processFrameFile('last', this.frames.last, this.frames.last.split(/[\\/]/).pop()) : Promise.resolve(),
+            ]).catch(err => {
+                console.error('[FrameUploader] 同步互换首尾帧到后端失败:', err);
+            });
+        }
+
         this.updateCardUI('first');
         this.updateCardUI('last');
 
@@ -208,6 +225,13 @@ class FrameUploader {
         // 【新增】：同步清空 AppState 里的数据
         if (window.AppState) {
             window.AppState.clearFrames();
+        }
+
+        // 【多租户改造 v2】：同步清空后端首尾帧
+        if (typeof window.API !== 'undefined') {
+            window.API.clearFrames().catch(err => {
+                console.error('[FrameUploader] 清空后端首尾帧失败:', err);
+            });
         }
 
         this.updateCardUI('first');

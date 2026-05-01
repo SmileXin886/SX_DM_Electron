@@ -11,6 +11,9 @@ const AppState = {
     wsUrl: 'ws://127.0.0.1:8765/ws',
     pendingTasks: new Set(),
 
+    // ===== 【多租户】Task ID =====
+    currentTaskId: null,
+
     // ===== Dreamina 配置 =====
     type: 'AI Video',
     model: 'Dreamina Seedance 2.0 Fast',
@@ -132,6 +135,15 @@ const AppState = {
     },
 
     /**
+     * 【多租户】初始化 Task ID
+     * 每个独立运行的控制台都有自己唯一的身份标识
+     */
+    initTaskId: function() {
+        this.currentTaskId = 'Task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+        console.log('[AppState] 初始化 Task ID:', this.currentTaskId);
+    },
+
+    /**
      * 重置状态（应用启动时调用）
      */
     reset: function() {
@@ -141,6 +153,8 @@ const AppState = {
         this.presets = [];
         this.uploadedFiles = [];
         this.clearFrames();
+        // 【多租户】重置时生成新的 Task ID
+        this.initTaskId();
     }
 };
 

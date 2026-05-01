@@ -520,6 +520,7 @@
         /**
          * 将文件路径发送给后端处理
          * 始终走 FastAPI HTTP 服务（server.py 是常驻进程，内存状态不丢失）
+         * 【多租户】携带 task_id 实现 session 隔离
          */
         async processFiles(paths) {
             try {
@@ -530,8 +531,10 @@
                 });
 
                 EventBus.emit('progress:files', { percent: 95, message: '正在提交...' });
-                const result = await httpPost('/api/files/process', { files: enrichedFiles });
-                console.log('[API] 文件处理结果:', result);
+                // 【多租户】携带 task_id
+                const task_id = window.AppState.currentTaskId || 'default';
+                const result = await httpPost('/api/files/process', { task_id, files: enrichedFiles });
+                console.log('[API] 文件处理结果:', result, 'task_id:', task_id);
 
                 EventBus.emit('progress:files', { percent: 100, message: '完成' });
                 EventBus.emit('files:processed', result);
@@ -545,10 +548,12 @@
         /**
          * 获取当前文件列表
          * 始终走 FastAPI HTTP 服务
+         * 【多租户】携带 task_id
          */
         async getFiles() {
             try {
-                const result = await httpGet('/api/files');
+                const task_id = window.AppState.currentTaskId || 'default';
+                const result = await httpGet('/api/files?task_id=' + encodeURIComponent(task_id));
                 return result.files || [];
             } catch (e) {
                 console.error('[API] 获取文件列表失败:', e);
@@ -559,10 +564,12 @@
         /**
          * 删除文件
          * 始终走 FastAPI HTTP 服务
+         * 【多租户】携带 task_id
          */
         async removeFile(index) {
             try {
-                const result = await httpDelete('/api/files/' + index);
+                const task_id = window.AppState.currentTaskId || 'default';
+                const result = await httpDelete('/api/files/' + index + '?task_id=' + encodeURIComponent(task_id));
                 // 附带被删除文件的 identity 信息，供 editor_tag_sync 精确匹配标签
                 const removed = result.removed || {};
                 EventBus.emit('file:removed', {
@@ -584,6 +591,7 @@
          * 始终走 FastAPI HTTP 服务
          * @param {string[]} paths - 文件路径数组
          * @param {{x: number, y: number}} dropPos - 鼠标释放位置
+         * 【多租户】携带 task_id 实现 session 隔离
          */
         async processEditorDropFiles(paths, dropPos) {
             try {
@@ -594,8 +602,10 @@
                     console.warn('[API] 拖拽文件无效（path 为空）');
                     return;
                 }
-                const result = await httpPost('/api/files/process', { files: validFiles, for_editor: true });
-                console.log('[API] 编辑区拖拽处理结果:', result);
+                // 【多租户】携带 task_id
+                const task_id = window.AppState.currentTaskId || 'default';
+                const result = await httpPost('/api/files/process', { task_id, files: validFiles, for_editor: true });
+                console.log('[API] 编辑区拖拽处理结果:', result, 'task_id:', task_id);
 
                 if (result.files && result.files.length > 0) {
                     // 将新文件追加到 AppState（避免引用索引错乱）
@@ -689,6 +699,75 @@
             } catch (e) {
                 console.error('[API] 删除预设失败:', e);
                 EventBus.emit('error:preset', { error: e.message });
+            }
+        },
+
+
+        // ============ 首尾帧同步（多租户 task_id 隔离）============
+
+        /**
+         * 同步首尾帧到后端（多租户）
+         * @param {string} frameType - 'first' 或 'last'
+         * @param {string} filePath - 文件绝对路径
+         * @param {string} name - 文件名
+         */
+        async processFrameFile(frameType, filePath, name) {
+            const task_id = window.AppState?.currentTaskId || 'default';
+            try {
+                const result = await httpPost('/api/frames/process', {
+                    task_id,
+                    frame_type: frameType,
+                    file_path: filePath,
+                    name: name || filePath.split(/[\\/]/).pop(),
+                });
+                console.log('[API] 首尾帧同步结果:', result, 'task_id:', task_id);
+
+                // 后端返回成功后，同步更新前端 AppState UI 状态
+                if (result.success && window.AppState) {
+                    const fileInfo = result.file_info;
+                    window.AppState.setFrameFile(
+                        frameType,
+                        filePath,
+                        fileInfo?.url || 'app-media://local/' + filePath.replace(/\\/g, '/')
+                    );
+                }
+
+                EventBus.emit('frames:synced', result);
+                return result;
+            } catch (e) {
+                console.error('[API] 首尾帧同步失败:', e);
+                EventBus.emit('error:frames', { error: e.message });
+            }
+        },
+
+        /**
+         * 获取指定 task_id 的首尾帧（从后端拉取）
+         */
+        async getFrames() {
+            const task_id = window.AppState?.currentTaskId || 'default';
+            try {
+                const result = await httpGet('/api/frames?task_id=' + encodeURIComponent(task_id));
+                return result.frames || { first: null, last: null };
+            } catch (e) {
+                console.error('[API] 获取首尾帧失败:', e);
+                return { first: null, last: null };
+            }
+        },
+
+        /**
+         * 清空指定 task_id 的首尾帧
+         */
+        async clearFrames() {
+            const task_id = window.AppState?.currentTaskId || 'default';
+            try {
+                const result = await httpDelete('/api/frames?task_id=' + encodeURIComponent(task_id));
+                if (result.success && window.AppState) {
+                    window.AppState.clearFrames();
+                }
+                EventBus.emit('frames:cleared', result);
+                return result;
+            } catch (e) {
+                console.error('[API] 清空首尾帧失败:', e);
             }
         },
 

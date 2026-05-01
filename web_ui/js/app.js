@@ -73,6 +73,9 @@ function initNavigation() {
             if (page === 'presets') {
                 window.API && window.API.getPresets && window.API.getPresets();
             }
+            if (page === 'register') {
+                window.RegisterApp && window.RegisterApp.init && window.RegisterApp.init();
+            }
         });
     });
 
