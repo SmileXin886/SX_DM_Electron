@@ -7,7 +7,8 @@
  * 获取默认 provider key
  */
 function getDefaultProviderKey(settings = []) {
-    const def = settings.find(s => s.is_default);
+    if (!Array.isArray(settings)) return '';
+    const def = settings.find(s => s && s.is_default);
     return def ? def.provider_key : (settings[0] ? settings[0].provider_key : '');
 }
 
@@ -25,7 +26,8 @@ function getProviderMergedValues(setting) {
  * 获取 provider 设置
  */
 function getProviderSetting(settings = [], providerKey) {
-    return settings.find(s => s.provider_key === providerKey) || null;
+    if (!Array.isArray(settings)) return null;
+    return settings.find(s => s && s.provider_key === providerKey) || null;
 }
 
 /**
@@ -45,7 +47,8 @@ function getCaptchaStrategyLabel(executorType, captchaPolicy, captchaProviders) 
     if (executorType === 'protocol') {
         const policy = captchaPolicy || {};
         const primary = policy.primary || '';
-        const prov = captchaProviders.find(p => p.value === primary);
+        const providers = captchaProviders || [];
+        const prov = providers.find(p => p.value === primary);
         return prov ? prov.label : (primary || '自动');
     }
     return '浏览器自动';
@@ -62,6 +65,8 @@ function buildRegistrationOptions(platform) {
     const identityModes = platform.supported_identity_modes || [];
     const oauthProviders = platform.supported_oauth_providers || [];
 
+    if (!Array.isArray(identityModes)) return opts;
+
     if (identityModes.includes('mailbox')) {
         opts.push({
             key: 'mailbox',
@@ -73,7 +78,7 @@ function buildRegistrationOptions(platform) {
         });
     }
 
-    if (identityModes.includes('oauth_browser')) {
+    if (identityModes.includes('oauth_browser') && Array.isArray(oauthProviders)) {
         oauthProviders.forEach(provider => {
             opts.push({
                 key: `oauth_${provider}`,

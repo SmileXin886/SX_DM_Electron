@@ -27,7 +27,7 @@ const RegCardProvider = {
 
         if (!selectEl) return;
         if (providers.length > 0) {
-            const current = providers.find(p => p.value === form.mail_provider);
+            const current = (providers || []).find(p => p && p.value === form.mail_provider);
             selectEl.innerHTML = `
                 <div class="reg-field">
                     <label class="reg-label">邮件服务</label>

@@ -1,7 +1,7 @@
-/* 注册模式 - 表单元素 */
-.reg-field { margin-bottom: 14px; }
-.reg-field:last-child { margin-bottom: 0; }
-.reg-label {
+/* 注册模式 - 表单元素（带命名空间隔离） */
+.reg-scope .reg-field { margin-bottom: 14px; }
+.reg-scope .reg-field:last-child { margin-bottom: 0; }
+.reg-scope .reg-label {
     display: block;
     font-size: 11px;
     font-weight: 500;
@@ -10,7 +10,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
-.reg-input {
+.reg-scope .reg-input {
     width: 100%;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -21,13 +21,13 @@
     transition: all 0.2s;
     box-sizing: border-box;
 }
-.reg-input:focus {
+.reg-scope .reg-input:focus {
     outline: none;
     border-color: rgb(0, 202, 224);
     background: rgba(0, 202, 224, 0.04);
 }
-.reg-input::placeholder { color: #4a4a4a; }
-.reg-select {
+.reg-scope .reg-input::placeholder { color: #4a4a4a; }
+.reg-scope .reg-select {
     width: 100%;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -43,5 +43,5 @@
     transition: all 0.2s;
     box-sizing: border-box;
 }
-.reg-select:hover { border-color: rgba(255, 255, 255, 0.2); }
-.reg-select:focus { outline: none; border-color: rgb(0, 202, 224); }
+.reg-scope .reg-select:hover { border-color: rgba(255, 255, 255, 0.2); }
+.reg-scope .reg-select:focus { outline: none; border-color: rgb(0, 202, 224); }

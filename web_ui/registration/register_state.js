@@ -79,10 +79,12 @@ const RegisterState = {
     },
 
     getCurrentPlatform() {
-        return this._platforms.find(p => p.name === this._form?.platform) || null;
+        if (!Array.isArray(this._platforms)) return null;
+        return this._platforms.find(p => p && p.name === this._form?.platform) || null;
     },
 
     getPlatformOptions() {
+        if (!Array.isArray(this._platforms)) return [];
         return this._platforms.map(p => ({ value: p.name, label: p.display_name }));
     },
 

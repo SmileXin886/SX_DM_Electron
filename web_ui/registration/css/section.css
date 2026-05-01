@@ -1,22 +1,22 @@
-/* 注册模式 - 右侧面板 */
-.reg-summary-card,
-.reg-status-card,
-.reg-log-card {
+/* 注册模式 - 右侧面板（带命名空间隔离） */
+.reg-scope .reg-summary-card,
+.reg-scope .reg-status-card,
+.reg-scope .reg-log-card {
     background: rgba(32, 33, 39, 0.85);
     backdrop-filter: blur(20px);
     border-radius: 16px;
     padding: 20px;
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
-.reg-summary-chip {
+.reg-scope .reg-summary-chip {
     border-radius: 20px;
     padding: 12px 14px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
     margin-bottom: 10px;
 }
-.reg-summary-chip:last-child { margin-bottom: 0; }
-.reg-summary-chip-label {
+.reg-scope .reg-summary-chip:last-child { margin-bottom: 0; }
+.reg-scope .reg-summary-chip-label {
     font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
@@ -27,8 +27,8 @@
     gap: 4px;
     margin-bottom: 6px;
 }
-.reg-summary-chip-value { font-size: 14px; font-weight: 600; color: #c9d1d9; }
-.reg-status-badge {
+.reg-scope .reg-summary-chip-value { font-size: 14px; font-weight: 600; color: #c9d1d9; }
+.reg-scope .reg-status-badge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -38,26 +38,26 @@
     font-weight: 600;
     margin-left: 8px;
 }
-.reg-status-badge.pending { background: rgba(139, 148, 158, 0.15); color: #8b949e; }
-.reg-status-badge.running,
-.reg-status-badge.started { background: rgba(0, 202, 224, 0.15); color: rgb(0, 202, 224); }
-.reg-status-badge.succeeded { background: rgba(63, 185, 80, 0.15); color: #3fb950; }
-.reg-status-badge.failed,
-.reg-status-badge.cancelled,
-.reg-status-badge.interrupted { background: rgba(248, 81, 73, 0.15); color: #f85149; }
-.reg-stat-grid {
+.reg-scope .reg-status-badge.pending { background: rgba(139, 148, 158, 0.15); color: #8b949e; }
+.reg-scope .reg-status-badge.running,
+.reg-scope .reg-status-badge.started { background: rgba(0, 202, 224, 0.15); color: rgb(0, 202, 224); }
+.reg-scope .reg-status-badge.succeeded { background: rgba(63, 185, 80, 0.15); color: #3fb950; }
+.reg-scope .reg-status-badge.failed,
+.reg-scope .reg-status-badge.cancelled,
+.reg-scope .reg-status-badge.interrupted { background: rgba(248, 81, 73, 0.15); color: #f85149; }
+.reg-scope .reg-stat-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
     margin-top: 14px;
 }
-.reg-stat-cell {
+.reg-scope .reg-stat-cell {
     border-radius: 16px;
     padding: 12px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.06);
 }
-.reg-stat-label {
+.reg-scope .reg-stat-label {
     font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
@@ -68,4 +68,4 @@
     gap: 4px;
     margin-bottom: 6px;
 }
-.reg-stat-value { font-size: 16px; font-weight: 700; color: #c9d1d9; }
+.reg-scope .reg-stat-value { font-size: 16px; font-weight: 700; color: #c9d1d9; }

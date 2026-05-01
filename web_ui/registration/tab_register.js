@@ -1,6 +1,6 @@
 /**
- * æ³¨å†Œæ¨¡å¼ Tab ä¸»å…¥å£
- * æ¯ä¸ªå¡ç‰‡æ¸²æŸ“é€»è¾‘æ‹†åˆ†åˆ° cards/ ç›®å½•ä¸‹ç‹¬ç«‹æ–‡ä»¶
+ * 注册模式 Tab 主入口
+ * 每个卡片渲染逻辑拆分到 cards/ 目录下独立文件
  */
 window.RegisterApp = {
 
@@ -15,7 +15,7 @@ window.RegisterApp = {
     },
 
     // ============================================================
-    // æ•°æ®åŠ è½½ï¼ˆåŽå°é™é»˜ï¼Œä¸é˜»å¡ž UIï¼‰
+    // 数据加载（后台静默，不阻塞 UI）
     // ============================================================
 
     async _loadAndRender() {
@@ -29,7 +29,7 @@ window.RegisterApp = {
             RegisterState.setPlatforms(platforms || []);
             RegisterState.setConfigOptions(options);
             RegisterState.setOptionsError(
-                options ? '' : 'æ— æ³•åŠ è½½ provider å…ƒæ•°æ®ï¼Œè¯·å…ˆé…ç½®ç›¸å…³ provider',
+                options ? '' : '无法加载 provider 元数据，请先配置相关 provider',
             );
 
             const form = RegisterState.getForm();
@@ -54,13 +54,13 @@ window.RegisterApp = {
             this._renderAll();
 
         } catch (e) {
-            console.error('[Register] åŠ è½½å¤±è´¥:', e);
+            console.error('[Register] 加载失败:', e);
             this._renderAll();
         }
     },
 
     // ============================================================
-    // å…¨é‡æ¸²æŸ“
+    // 全量渲染
     // ============================================================
 
     _renderAll() {
@@ -79,18 +79,18 @@ window.RegisterApp = {
             currentPlatform?.supported_executor_options || [],
         );
 
-        const summaryRegistration = registrationOptions.find(o =>
+        const summaryRegistration = (registrationOptions || []).find(o =>
             o.identityProvider === form.identity_provider && o.oauthProvider === form.oauth_provider,
         )?.label || '-';
 
-        const summaryExecutor = executorOptions.find(o => o.value === form.executor_type)?.label || '-';
+        const summaryExecutor = (executorOptions || []).find(o => o.value === form.executor_type)?.label || '-';
         const summaryVerification = getCaptchaStrategyLabel(
             form.executor_type,
             configOptions.captcha_policy,
             configOptions.captcha_providers,
         );
 
-        // å„å¡ç‰‡ç‹¬ç«‹æ¸²æŸ“
+        // 各卡片独立渲染
         RegCardBasic.render(form, platformOptions);
         RegCardIdentity.render(form, registrationOptions);
         RegCardExecutor.render(form, executorOptions);
@@ -103,7 +103,7 @@ window.RegisterApp = {
     },
 
     // ============================================================
-    // äº‹ä»¶å¤„ç†
+    // 事件处理
     // ============================================================
 
     onPlatformChange(value) {
@@ -136,13 +136,13 @@ window.RegisterApp = {
     },
 
     // ============================================================
-    // æäº¤ä»»åŠ¡
+    // 提交任务
     // ============================================================
 
     async submit() {
         const form = RegisterState.getForm();
         if (!form.platform) {
-            RegisterState.addLog('warning', 'è¯·é€‰æ‹©å¹³å°');
+            RegisterState.addLog('warning', '请选择平台');
             this._renderAll();
             return;
         }
@@ -170,17 +170,17 @@ window.RegisterApp = {
             extra,
         };
 
-        RegisterState.addLog('info', `æäº¤æ³¨å†Œä»»åŠ¡: ${form.platform} x${form.count}`);
+        RegisterState.addLog('info', `提交注册任务: ${form.platform} x${form.count}`);
 
         try {
             const task = await RegisterApi.submitTask(payload);
             RegisterState.setTask(task);
             RegisterState.setPolling(true);
-            RegisterState.addLog('info', `ä»»åŠ¡å·²åˆ›å»º: ${task.id}`);
+            RegisterState.addLog('info', `任务已创建: ${task.id}`);
             RegisterState.startPolling(() => this._pollTask(task.id));
             this._renderAll();
         } catch (e) {
-            RegisterState.addLog('error', `æäº¤å¤±è´¥: ${e.message}`);
+            RegisterState.addLog('error', `提交失败: ${e.message}`);
             RegCardSummary.setButtonLoading(false);
             this._renderAll();
         }
@@ -203,7 +203,7 @@ window.RegisterApp = {
                 RegisterState.markTerminalTask(String(taskId));
                 const ok = latest.status === 'succeeded';
                 RegisterState.addLog(ok ? 'success' : 'error',
-                    `ä»»åŠ¡ç»“æŸ: ${latest.status} (æˆåŠŸ ${latest.success_count || 0}, å¤±è´¥ ${latest.error_count || 0})`);
+                    `任务结束: ${latest.status} (成功 ${latest.success_count || 0}, 失败 ${latest.error_count || 0})`);
                 if (ok && latest.cashier_urls?.length > 0) {
                     const key = String(taskId);
                     if (!RegisterState.isCashierOpened(key)) {
@@ -214,7 +214,7 @@ window.RegisterApp = {
             }
             this._renderAll();
         } catch (e) {
-            RegisterState.addLog('error', `è½®è¯¢å‡ºé”™: ${e.message}`);
+            RegisterState.addLog('error', `轮询出错: ${e.message}`);
         }
     },
 
@@ -230,11 +230,12 @@ window.RegisterApp = {
 };
 
 // ============================================================
-// è¾…åŠ©å‡½æ•°
+// 辅助函数
 // ============================================================
 
 function _getDefaultProviderKey(settings = []) {
-    const def = settings.find(s => s.is_default);
+    if (!Array.isArray(settings)) return '';
+    const def = settings.find(s => s && s.is_default);
     return def ? def.provider_key : (settings[0] ? settings[0].provider_key : '');
 }
 
@@ -248,10 +249,11 @@ function _hasReusableOAuthBrowser(form) {
 function _applyMailProviderDefaults(providerKey) {
     const opts = RegisterState.getConfigOptions() || {};
     const settings = opts.mailbox_settings || [];
-    const setting = settings.find(s => s.provider_key === providerKey);
+    if (!Array.isArray(settings)) return;
+    const setting = settings.find(s => s && s.provider_key === providerKey);
     if (!setting) return;
     const merged = getProviderMergedValues(setting);
-    const provider = (opts.mailbox_providers || []).find(p => p.value === providerKey);
+    const provider = (opts.mailbox_providers || []).find(p => p && p.value === providerKey);
     if (!provider) return;
     (provider.fields || []).forEach(field => {
         const val = merged[field.key] ?? RegisterState.get(field.key) ?? '';
@@ -262,10 +264,11 @@ function _applyMailProviderDefaults(providerKey) {
 function _applySmsProviderDefaults(providerKey) {
     const opts = RegisterState.getConfigOptions() || {};
     const settings = opts.sms_settings || [];
-    const setting = settings.find(s => s.provider_key === providerKey);
+    if (!Array.isArray(settings)) return;
+    const setting = settings.find(s => s && s.provider_key === providerKey);
     if (!setting) return;
     const merged = getProviderMergedValues(setting);
-    const provider = (opts.sms_providers || []).find(p => p.value === providerKey);
+    const provider = (opts.sms_providers || []).find(p => p && p.value === providerKey);
     if (!provider) return;
     (provider.fields || []).forEach(field => {
         const val = merged[field.key] ?? RegisterState.get(field.key) ?? '';
