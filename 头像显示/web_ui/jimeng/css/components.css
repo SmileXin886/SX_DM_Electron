@@ -1,0 +1,604 @@
+/* 即梦AI - 卡片、表单、按钮组件样式（带命名空间隔离） */
+
+/* ==================== 通用卡片 ==================== */
+.jm-scope .jm-card {
+    background: rgba(32, 33, 39, 0.85);
+    backdrop-filter: blur(20px);
+    border-radius: 16px;
+    padding: 26px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+}
+
+.jm-scope .jm-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #8b949e;
+    margin-bottom: 18px;
+}
+
+.jm-scope .jm-card-title-icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.jm-scope .jm-card-title-with-icon {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.jm-scope .jm-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.jm-scope .jm-card-header .jm-card-title {
+    margin-bottom: 0;
+}
+
+/* ==================== 添加账号卡片 ==================== */
+.jm-scope .jm-add-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.jm-scope .jm-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.jm-scope .jm-input-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(224, 245, 255, 0.5);
+    width: 82px;
+    flex-shrink: 0;
+    text-align: left;
+    letter-spacing: 0.3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.jm-scope .jm-input-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+    color: rgba(224, 245, 255, 0.45);
+}
+
+.jm-scope .jm-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 11px 16px;
+    color: #c9d1d9;
+    font-size: 14px;
+    transition: all 0.2s;
+    min-width: 0;
+    max-width: 1600px;
+    font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.jm-scope .jm-input:focus {
+    outline: none;
+    border-color: rgb(0, 202, 224);
+    background: rgba(0, 202, 224, 0.04);
+    box-shadow: 0 0 0 3px rgba(0, 202, 224, 0.08);
+}
+
+.jm-scope .jm-input::placeholder {
+    color: rgba(224, 245, 255, 0.2);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.jm-scope .jm-input-file {
+    cursor: pointer;
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.jm-scope .jm-input-file-wrapper {
+    flex: 1;
+    position: relative;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 11px 16px;
+    color: rgba(224, 245, 255, 0.35);
+    font-size: 13px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    overflow: hidden;
+    transition: all 0.2s;
+    min-width: 0;
+    max-width: 1600px;
+    display: flex;
+    align-items: center;
+}
+
+.jm-scope .jm-input-file-wrapper:hover {
+    border-color: rgba(0, 202, 224, 0.4);
+    background: rgba(0, 202, 224, 0.03);
+    color: rgba(224, 245, 255, 0.5);
+}
+
+.jm-scope .jm-input-file-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
+/* 按钮 */
+.jm-scope .jm-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 11px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.jm-scope .jm-btn-primary {
+    background: linear-gradient(135deg, rgb(0, 202, 224) 0%, rgb(0, 180, 200) 100%);
+    color: rgb(15, 15, 18);
+    box-shadow: 0 2px 10px rgba(0, 202, 224, 0.25);
+    border-color: rgba(0, 202, 224, 0.4);
+}
+
+.jm-scope .jm-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0, 202, 224, 0.35);
+    border-color: rgba(0, 202, 224, 0.7);
+}
+
+.jm-scope .jm-btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(0, 202, 224, 0.2);
+}
+
+.jm-scope .jm-btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.jm-scope .jm-btn-secondary {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: rgba(224, 245, 255, 0.7);
+}
+
+.jm-scope .jm-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #c9d1d9;
+    transform: translateY(-1px);
+}
+
+.jm-scope .jm-btn-danger {
+    background: rgba(248, 81, 73, 0.1);
+    border-color: rgba(248, 81, 73, 0.2);
+    color: #f85149;
+}
+
+.jm-scope .jm-btn-danger:hover {
+    background: rgba(248, 81, 73, 0.2);
+    border-color: rgba(248, 81, 73, 0.4);
+    transform: translateY(-1px);
+}
+
+.jm-scope .jm-btn-active {
+    background: rgba(63, 185, 80, 0.1);
+    border-color: rgba(63, 185, 80, 0.3);
+    color: #3fb950;
+}
+
+.jm-scope .jm-btn-active:hover {
+    background: rgba(63, 185, 80, 0.2);
+    transform: translateY(-1px);
+}
+
+/* ==================== 账号列表 ==================== */
+.jm-scope .jm-account-count {
+    font-size: 14px;
+    color: #6e7681;
+    font-weight: 500;
+}
+
+.jm-scope .jm-account-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 520px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.jm-scope .jm-account-list::-webkit-scrollbar {
+    width: 4px;
+}
+.jm-scope .jm-account-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.jm-scope .jm-account-list::-webkit-scrollbar-thumb {
+    background: #3a3a3a;
+    border-radius: 2px;
+}
+
+/* 空状态 */
+.jm-scope .jm-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    color: #6e7681;
+    font-size: 13px;
+    text-align: center;
+}
+
+/* 账号项 */
+.jm-scope .jm-account-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 18px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    transition: all 0.2s;
+}
+
+.jm-scope .jm-account-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(0, 202, 224, 0.2);
+}
+
+.jm-scope .jm-account-item.is-active {
+    background: rgba(0, 202, 224, 0.06);
+    border-color: rgba(0, 202, 224, 0.3);
+}
+
+/* 单选框 */
+.jm-scope .jm-radio {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.jm-scope .jm-radio:checked {
+    border-color: rgb(0, 202, 224);
+    background: rgb(0, 202, 224);
+    box-shadow: 0 0 0 3px rgba(0, 202, 224, 0.15);
+}
+
+.jm-scope .jm-radio:checked::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px;
+    height: 6px;
+    background: #0f0f0f;
+    border-radius: 50%;
+}
+
+.jm-scope .jm-radio:hover {
+    border-color: rgba(0, 202, 224, 0.5);
+}
+
+/* 账号名称 */
+.jm-scope .jm-account-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.jm-scope .jm-account-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #c9d1d9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.jm-scope .jm-account-name.is-active {
+    color: rgb(0, 202, 224);
+}
+
+.jm-scope .jm-account-meta {
+    font-size: 12px;
+    color: #6e7681;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.jm-scope .jm-account-meta svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+.jm-scope .jm-account-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.jm-scope .jm-account-tag.cloud {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.jm-scope .jm-account-tag.local {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.25);
+}
+
+.jm-scope .jm-account-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.jm-scope .jm-account-actions .jm-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+}
+
+/* ==================== 右侧公告栏 ==================== */
+.jm-scope .jm-announcement-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 26px;
+    flex: 1;
+    text-align: center;
+}
+
+.jm-scope .jm-announcement-icon {
+    margin-bottom: 12px;
+}
+
+.jm-scope .jm-announcement-text {
+    font-size: 14px;
+    color: rgba(224, 245, 255, 0.4);
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.jm-scope .jm-announcement-hint {
+    font-size: 13px;
+    color: rgba(224, 245, 255, 0.2);
+}
+
+/* ==================== 账号信息 + 控制台 卡片高度分配 ==================== */
+.jm-scope .jm-accounts-card {
+    flex: 1.2;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.jm-scope .jm-console-card {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 14px 16px;
+}
+
+.jm-scope .jm-console-card .jm-card-header {
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+.jm-scope .jm-console-card .jm-card-header .jm-card-title {
+    margin-bottom: 0;
+    font-size: 11px;
+    color: #6e7681;
+}
+
+.jm-scope .jm-console-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+.jm-scope .jm-console-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6e7681;
+}
+
+/* ==================== 控制台日志区 ==================== */
+.jm-scope .jm-console-body {
+    flex: 1;
+    min-height: 0;
+    background: #0d1117;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    overflow-y: auto;
+    padding: 10px 12px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.jm-scope .jm-console-body::-webkit-scrollbar {
+    width: 4px;
+}
+.jm-scope .jm-console-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.jm-scope .jm-console-body::-webkit-scrollbar-thumb {
+    background: #3a3a3a;
+    border-radius: 2px;
+}
+.jm-scope .jm-console-body::-webkit-scrollbar-thumb:hover {
+    background: #4a4a4a;
+}
+
+.jm-scope .jm-console-empty {
+    color: rgba(224, 245, 255, 0.2);
+    text-align: center;
+    padding: 16px;
+}
+
+.jm-scope .jm-console-line {
+    margin-bottom: 4px;
+    word-break: break-all;
+}
+
+.jm-scope .jm-console-line.info    { color: #c9d1d9; }
+.jm-scope .jm-console-line.success { color: #3fb950; }
+.jm-scope .jm-console-line.warning { color: #f0b429; }
+.jm-scope .jm-console-line.error   { color: #f85149; }
+.jm-scope .jm-console-line .jm-console-time {
+    color: #4a4a4a;
+    margin-right: 8px;
+}
+
+/* ==================== 极小按钮（ghost 清空） ==================== */
+.jm-scope .jm-btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    color: #6e7681;
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+
+.jm-scope .jm-btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #c9d1d9;
+    transform: none;
+}
+
+/* ==================== 旋转动画 ==================== */
+@keyframes jm-spin {
+    to { transform: rotate(360deg); }
+}
+
+.jm-scope .jm-spin {
+    animation: jm-spin 1s linear infinite;
+}
+
+/* ==================== Toast 提示 ==================== */
+.jm-scope .jm-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: rgba(32, 33, 39, 0.95);
+    backdrop-filter: blur(10px);
+    color: rgb(245, 251, 255);
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 13px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.jm-scope .jm-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.jm-scope .jm-toast.success {
+    border-color: rgba(63, 185, 80, 0.3);
+    background: rgba(63, 185, 80, 0.1);
+    color: #3fb950;
+}
+
+.jm-scope .jm-toast.error {
+    border-color: rgba(248, 81, 73, 0.3);
+    background: rgba(248, 81, 73, 0.1);
+    color: #f85149;
+}
+
+.jm-scope .jm-toast.warning {
+    border-color: rgba(240, 180, 41, 0.3);
+    background: rgba(240, 180, 41, 0.1);
+    color: #f0b429;
+}
+
+/* ==================== 账号头像 ==================== */
+.jm-scope .jm-account-avatar {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+}
+
+.jm-scope .jm-account-avatar img {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #1e1e1e;
+}
+
+.jm-scope .jm-default-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: rgb(0, 202, 224);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0f0f0f;
+    font-size: 16px;
+    font-weight: 600;
+}
