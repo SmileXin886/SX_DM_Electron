@@ -1,0 +1,38 @@
+/* 注册模式 - 胶囊按钮组（带命名空间隔离） */
+.reg-scope .reg-pill-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.reg-scope .reg-pill {
+    border-radius: 22px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    text-align: left;
+}
+.reg-scope .reg-pill:hover:not(.disabled) {
+    border-color: rgba(0, 202, 224, 0.4);
+    background: rgba(0, 202, 224, 0.05);
+}
+.reg-scope .reg-pill.active {
+    border-color: rgb(0, 202, 224);
+    background: rgba(0, 202, 224, 0.1);
+}
+.reg-scope .reg-pill.disabled { opacity: 0.45; cursor: not-allowed; }
+.reg-scope .reg-pill-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(0, 202, 224, 0.15);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+.reg-scope .reg-pill.active .reg-pill-icon { background: rgba(0, 202, 224, 0.25); }
+.reg-scope .reg-pill-icon svg { width: 14px; height: 14px; color: rgb(0, 202, 224); }
+.reg-scope .reg-pill-label { font-size: 13px; font-weight: 600; color: #c9d1d9; display: block; }
+.reg-scope .reg-pill-desc { font-size: 11px; color: #6e7681; margin-top: 4px; line-height: 1.4; }
