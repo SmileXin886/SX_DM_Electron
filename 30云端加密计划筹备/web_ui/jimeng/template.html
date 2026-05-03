@@ -1,0 +1,173 @@
+<!-- 即梦AI标签页模板 - 由 TabManager 按需加载 -->
+<div class="jm-scope">
+    <!-- 三栏布局容器 -->
+    <div class="jm-layout">
+        <!-- ==================== 左侧栏（整体一个卡片，Logo置顶 + 菜单紧凑）==================== -->
+        <aside class="jm-sidebar">
+            <!-- Logo 占顶部区域 -->
+            <div class="jm-logo-area">
+                <img src="assets/JMAI.png" alt="JMAI" class="jm-logo-img">
+            </div>
+            <!-- 导航菜单（紧贴Logo下方） -->
+            <nav class="jm-nav">
+                <div class="jm-nav-item active" data-nav="accounts">
+                    <svg class="jm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>账号管理</span>
+                </div>
+                <div class="jm-nav-item" data-nav="settings">
+                    <svg class="jm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    <span>设置</span>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- ==================== 中侧主内容区 ==================== -->
+        <main class="jm-main">
+            <!-- 【添加账号】卡片 -->
+            <div class="jm-card" id="jm-card-add">
+                <div class="jm-card-title">添加账号</div>
+                <div class="jm-add-section">
+                    <!-- 云端验证行 -->
+                    <div class="jm-input-row">
+                        <div class="jm-input-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+                            </svg>
+                        </div>
+                        <label class="jm-input-label">云端验证登入</label>
+                        <input
+                            type="text"
+                            class="jm-input"
+                            id="jm-input-cloud-token"
+                            placeholder="粘贴 Authorization Token"
+                            oninput="parent.JimengApp.onFieldChange('cloud_token', this.value)"
+                        >
+                        <button
+                            class="jm-btn jm-btn-primary"
+                            id="jm-btn-cloud-auth"
+                            onclick="parent.JimengApp.authorize('cloud')"
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                            </svg>
+                            授权
+                        </button>
+                    </div>
+                    <!-- 本地验证行 -->
+                    <div class="jm-input-row">
+                        <div class="jm-input-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="3" y="3" width="7" height="7"/>
+                                <rect x="14" y="3" width="7" height="7"/>
+                                <rect x="14" y="14" width="7" height="7"/>
+                                <rect x="3" y="14" width="7" height="7"/>
+                            </svg>
+                        </div>
+                        <label class="jm-input-label">扫码快捷登入</label>
+                        <div class="jm-input-file-wrapper">
+                            <input
+                                type="file"
+                                class="jm-input jm-input-file"
+                                id="jm-input-local-file"
+                                accept=".sxc"
+                            >
+                            <span class="jm-input-file-text" id="jm-file-text">选择文件</span>
+                        </div>
+                        <button
+                            class="jm-btn jm-btn-primary"
+                            id="jm-btn-local-auth"
+                            onclick="parent.JimengApp.authorize('local')"
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                            </svg>
+                            导入
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 【账号信息】卡片 -->
+            <div class="jm-card jm-accounts-card" id="jm-card-accounts">
+                <div class="jm-card-header">
+                    <div class="jm-card-title-with-icon">
+                        <img src="assets/jmx.png" alt="jmx" class="jm-card-title-icon">
+                        <span class="jm-card-title">账号信息</span>
+                    </div>
+                    <div class="jm-account-count" id="jm-account-count">账号总数：0</div>
+                </div>
+                <div class="jm-account-list" id="jm-account-list">
+                    <!-- 动态渲染账号列表 -->
+                    <div class="jm-empty-state" id="jm-empty-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="opacity: 0.3; margin-bottom: 12px;">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        <p>暂无已授权账号</p>
+                        <p style="font-size: 12px; color: #6e7681; margin-top: 4px;">使用上方表单添加账号</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 【控制台】卡片 -->
+            <div class="jm-card jm-console-card" id="jm-card-console">
+                <div class="jm-console-header">
+                    <span class="jm-console-label">控制台</span>
+                    <button class="jm-btn jm-btn-ghost jm-btn-xs" id="jm-btn-clear-console" title="清空">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="jm-console-body" id="jm-console-body">
+                    <div class="jm-console-empty" id="jm-console-empty">
+                        暂无日志输出
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- ==================== 右侧栏 ==================== -->
+        <aside class="jm-aside">
+            <div class="jm-card jm-aside-card" id="jm-card-announcement">
+                <div class="jm-card-title">公告</div>
+                <div class="jm-announcement-body">
+                    <div class="jm-announcement-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity: 0.3;">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                    </div>
+                    <p class="jm-announcement-text">暂无最新公告</p>
+                    <p class="jm-announcement-hint">后续功能扩展区域</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- ==================== 自定义确认弹窗 ==================== -->
+    <div class="jm-modal-overlay" id="jm-confirm-modal" style="display: none;">
+        <div class="jm-modal-content">
+            <div class="jm-modal-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#f85149" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </div>
+            <div class="jm-modal-text" id="jm-confirm-text">确定要删除该账号吗？</div>
+            <div class="jm-modal-actions">
+                <button class="jm-btn jm-btn-secondary" id="jm-confirm-cancel">取消</button>
+                <button class="jm-btn jm-btn-danger" id="jm-confirm-ok">确定删除</button>
+            </div>
+        </div>
+    </div>
+
+</div>
