@@ -389,21 +389,30 @@ async function reconcileAgentTask(task) {
             if (!existingChild) {
                 TaskLedger.createTask(sid, { userMessageId: userMessageId });
             }
+
+            // 👇 核心修复区：识别是否为主任务本身
+            const isMainTaskItself = String(sid) === String(userMessageId);
+
             // 2. 再调用一次，此时必定触发 Object.assign，强行注入所有结算状态！
+            // 🌟 如果当前碎片就是主任务本身，绝不能把状态提前置为 settled！
+            // 必须等待底部的 isGenerationFinished 逻辑去完结它，否则轮询会异常中断
             TaskLedger.createTask(sid, {
                 billed: true,
                 billedCost: realCost,
                 real_cost: realCost,
                 userMessageId: userMessageId,
                 agentChildBilled: true,
-                status: 'settled'
+                ...(isMainTaskItself ? {} : { status: 'settled' })
             });
 
             if (TaskLedger.removeAlienBill) TaskLedger.removeAlienBill(sid);
 
+            // 🌟 视觉修复：如果是主任务本身，给发往 UI 的 ID 加上执行后缀，防止前端 Key 冲突导致渲染错乱
+            const displaySid = isMainTaskItself ? `${sid}-exec` : sid;
+
             emitToUI({
                 type: 'agent_task_settled_item',
-                submit_id: sid,
+                submit_id: displaySid,
                 deduct: realCost,
                 prompt: originalPrompt,
                 agentMode: originalAgentMode,
