@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>积分追踪器</title>
+    <link rel="stylesheet" href="css/tracker.css" />
+</head>
+<body>
+    <div id="tracker-root">
+        <!-- 可拖拽区域 -->
+        <div id="drag-region">
+            <span id="drag-hint">&#x2630;</span>
+        </div>
+
+        <!-- 计分板主体 -->
+        <div id="score-panel">
+            <!-- 积分概览 -->
+            <div id="points-overview">
+                <div id="current-points">
+                    <span id="points-value">--</span>
+                    <span id="points-unit">积分</span>
+                </div>
+                <div id="points-delta" class="hidden"></div>
+            </div>
+
+            <!-- 账号总动态开关 -->
+            <div id="global-dynamic-bar">
+                <span class="toggle-label">账号总动态 (查看全局)</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-global">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <!-- Tab 切换栏 -->
+            <div id="tab-bar">
+                <button class="tab-btn active" id="btn-live" data-tab="live">
+                    <span class="tab-dot live-dot"></span>实时动态
+                </button>
+                <button class="tab-btn" id="btn-agent" data-tab="agent">
+                    <span class="tab-dot agent-dot"></span>Agent 已核算
+                </button>
+                <button class="btn-refresh" id="btn-force-reconcile" title="强制触发追溯对账">
+                    <span class="refresh-icon">&#8635;</span>
+                </button>
+            </div>
+
+            <!-- 统计行 -->
+            <div id="stats-row">
+                <div class="stat-item">
+                    <span class="stat-label">已生成</span>
+                    <span class="stat-value" id="stat-tasks">0</span>
+                    <span class="stat-unit">次</span>
+                </div>
+                <div class="stat-divider">|</div>
+                <div class="stat-item">
+                    <span class="stat-label">已消耗</span>
+                    <span class="stat-value" id="stat-cost">0</span>
+                    <span class="stat-unit">积分</span>
+                </div>
+                <div class="stat-divider">|</div>
+                <div class="stat-item">
+                    <span class="stat-label">已返还</span>
+                    <span class="stat-value" id="stat-refund">0</span>
+                    <span class="stat-unit">积分</span>
+                </div>
+            </div>
+
+            <!-- 最近任务记录 -->
+            <div id="recent-tasks">
+                <div id="recent-tasks-label">最近任务</div>
+                <div id="task-list">
+                    <div class="task-empty">暂无记录</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="js/tracker.js"></script>
+</body>
+</html>
