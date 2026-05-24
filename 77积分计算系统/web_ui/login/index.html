@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:;">
+    <title>Dreamina Toolkit - License Activation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ==================== 深邃动态背景 ==================== -->
+    <div class="bg-scene">
+        <!-- 底层纯黑 + 径向渐变中心光 -->
+        <div class="bg-base"></div>
+        <!-- 主光晕层（偏右的青色主光） -->
+        <div class="bg-glow bg-glow--primary"></div>
+        <!-- 副光晕层（左侧紫色辅助光） -->
+        <div class="bg-glow bg-glow--secondary"></div>
+        <!-- 底部暖色微弱倒影 -->
+        <div class="bg-glow bg-glow--bottom"></div>
+        <!-- 网格纹理（增加科技感） -->
+        <div class="bg-grid"></div>
+    </div>
+
+    <!-- ==================== 主玻璃面板 ==================== -->
+    <div class="login-container">
+        <div class="login-panel">
+
+            <!-- ---- Logo / 产品标识区域 ---- -->
+            <div class="logo-zone">
+                <!-- 产品图标（抽象的几何光芒图形） -->
+                <div class="logo-icon">
+                    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- 外层环形 -->
+                        <circle cx="40" cy="40" r="36" stroke="url(#iconGrad)" stroke-width="1.5" stroke-opacity="0.4"/>
+                        <!-- 六边形外框 -->
+                        <polygon points="40,8 68,24 68,56 40,72 12,56 12,24"
+                                 stroke="url(#iconGrad)" stroke-width="1" stroke-opacity="0.25"
+                                 fill="none"/>
+                        <!-- 内层三角光芒 -->
+                        <path d="M40 20 L56 50 L24 50 Z" stroke="url(#iconGrad)" stroke-width="1.5"
+                              stroke-opacity="0.6" fill="none"/>
+                        <!-- 中心亮点 -->
+                        <circle cx="40" cy="40" r="5" fill="url(#iconGrad)" fill-opacity="0.9"/>
+                        <!-- 十字辅助线 -->
+                        <line x1="40" y1="12" x2="40" y2="68" stroke="url(#iconGrad)"
+                              stroke-width="0.5" stroke-opacity="0.2"/>
+                        <line x1="12" y1="40" x2="68" y2="40" stroke="url(#iconGrad)"
+                              stroke-width="0.5" stroke-opacity="0.2"/>
+                        <!-- 渐变定义 -->
+                        <defs>
+                            <linearGradient id="iconGrad" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stop-color="#00cae0"/>
+                                <stop offset="100%" stop-color="#8b5cf6"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+
+                <h1 class="logo-title">Dreamina Toolkit</h1>
+                <p class="logo-subtitle">Professional AI Video Generation Suite</p>
+            </div>
+
+            <!-- ---- 分隔线 ---- -->
+            <div class="divider">
+                <span class="divider-line"></span>
+                <span class="divider-text">License Activation</span>
+                <span class="divider-line"></span>
+            </div>
+
+            <!-- ---- 激活码表单 ---- -->
+            <form class="activation-form" id="activationForm" autocomplete="off">
+                <div class="form-group">
+                    <label class="form-label" for="licenseKey">Activation Code</label>
+                    <div class="input-wrapper">
+                        <input
+                            type="text"
+                            id="licenseKey"
+                            class="license-input"
+                            placeholder="XXXX-XXXX-XXXX-XXXX"
+                            maxlength="19"
+                            spellcheck="false"
+                            autocomplete="off"
+                        >
+                        <!-- 输入框左侧图标 -->
+                        <span class="input-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                        </span>
+                    </div>
+                    <!-- 错误提示区域 -->
+                    <p class="error-message" id="errorMsg" aria-live="polite"></p>
+                </div>
+
+                <!-- 验证按钮 -->
+                <button type="submit" class="verify-btn" id="verifyBtn">
+                    <span class="btn-content" id="btnContent">
+                        <!-- 默认状态文字 -->
+                        <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        Verify &amp; Launch
+                    </span>
+                    <!-- 加载状态 -->
+                    <span class="btn-loading" id="btnLoading">
+                        <span class="spinner"></span>
+                        Verifying...
+                    </span>
+                    <!-- 成功状态 -->
+                    <span class="btn-success" id="btnSuccess">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        Activated
+                    </span>
+                </button>
+            </form>
+
+            <!-- ---- 底部版权 ---- -->
+            <div class="footer">
+                <p class="copyright">
+                    &copy; Yiwan Co., Ltd (宜万股份有限公司 / C&Ocirc;NG TY TNHH YIWAN) All Rights Reserved.
+                </p>
+                <p class="version-info">Dreamina Toolkit v1.0.0</p>
+            </div>
+
+        </div>
+
+        <!-- ---- 高级加载覆盖层（位于 panel 外部，防止 backdrop-filter 重绘抖动）---- -->
+        <div class="premium-overlay" id="premiumOverlay">
+            <div class="cyber-spinner"></div>
+            <p class="overlay-text" id="overlayText">Verifying Cloud License...</p>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
